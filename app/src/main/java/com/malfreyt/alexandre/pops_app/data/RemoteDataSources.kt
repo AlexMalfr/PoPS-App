@@ -32,30 +32,22 @@ import kotlinx.coroutines.withContext
 class OasisRemoteDataSource(
     private val context: Context,
 ) {
-    suspend fun fetchSemesters(settings: AppSettings): List<RemoteSemesterData> {
+    suspend fun fetchSemesters(settings: AppSettings, account: OasisAccount): List<RemoteSemesterData> {
         return withContext(Dispatchers.IO) {
             requireInternetConnection()
 
             val baseUrl = ensureTrailingSlash(settings.oasisBaseUrl)
             val client = buildClient(settings.ignoreTlsErrors)
-            login(client, baseUrl, settings)
+            login(client, baseUrl, account.login, account.password)
 
             val semesters = mutableListOf<RemoteSemesterData>()
-            var emptyYears = 0
 
             for (academicYear in currentAcademicYear() downTo currentAcademicYear() - 10) {
-                var yearHasContent = false
                 for (semester in listOf(1, 2)) {
-                    val semesterData = fetchSemester(client, baseUrl, settings.login, academicYear, semester)
+                    val semesterData = fetchSemester(client, baseUrl, account.resolvedStudentId(), academicYear, semester)
                     if (semesterData.hasContent()) {
-                        yearHasContent = true
                         semesters += semesterData
                     }
-                }
-
-                emptyYears = if (yearHasContent) 0 else emptyYears + 1
-                if (semesters.isNotEmpty() && emptyYears >= 2) {
-                    break
                 }
             }
 
@@ -63,17 +55,52 @@ class OasisRemoteDataSource(
         }
     }
 
-    suspend fun testConnection(settings: AppSettings) {
+    suspend fun testConnection(settings: AppSettings, login: String, password: String) {
         withContext(Dispatchers.IO) {
             requireInternetConnection()
 
             val baseUrl = ensureTrailingSlash(settings.oasisBaseUrl)
             val client = buildClient(settings.ignoreTlsErrors)
-            login(client, baseUrl, settings)
+            login(client, baseUrl, login, password)
         }
     }
 
-    private fun login(client: OkHttpClient, baseUrl: String, settings: AppSettings) {
+    suspend fun fetchAccountProfile(settings: AppSettings, login: String, password: String): RemoteAccountProfile {
+        return withContext(Dispatchers.IO) {
+            requireInternetConnection()
+
+            val baseUrl = ensureTrailingSlash(settings.oasisBaseUrl)
+            val client = buildClient(settings.ignoreTlsErrors)
+            val studentId = login.trim()
+            login(client, baseUrl, login, password)
+
+            val displayName = runCatching {
+                client.newCall(
+                    Request.Builder()
+                        .url(baseUrl.toHttpUrl())
+                        .get()
+                        .build()
+                ).execute().use { response ->
+                    if (!response.isSuccessful) {
+                        return@use studentId
+                    }
+                    val document = Jsoup.parse(response.body?.string().orEmpty())
+                    document.selectFirst("span.username")?.text()?.trim().orEmpty().ifBlank { studentId }
+                }
+            }.getOrElse {
+                studentId
+            }
+
+            RemoteAccountProfile(
+                studentId = studentId,
+                displayName = displayName,
+                profilePhotoUrl = buildPhotoUrl(baseUrl, studentId),
+                profilePhotoBytes = fetchProfilePhotoBytes(client, baseUrl, studentId),
+            )
+        }
+    }
+
+    private fun login(client: OkHttpClient, baseUrl: String, login: String, password: String) {
         val loginUrl = (baseUrl + LOGIN_PATH).toHttpUrl()
         Log.d(TAG, "Opening Oasis session on $loginUrl")
         try {
@@ -84,8 +111,8 @@ class OasisRemoteDataSource(
             }
 
             val requestBody = FormBody.Builder()
-                .add("login", settings.login)
-                .add("password", settings.password)
+                .add("login", login)
+                .add("password", password)
                 .add("url", "codepage=MYMARKS")
                 .build()
 
@@ -203,6 +230,9 @@ class OasisRemoteDataSource(
 
             val gradeText = cells[3].text().trim().replace(',', '.')
             val grade = gradeText.takeUnless { it.isBlank() || it == "—" }?.toDoubleOrNull()
+            val averageLabel = displayText(cells.getOrNull(4)?.text().orEmpty())
+            val rankLabel = displayText(cells.getOrNull(5)?.text().orEmpty())
+            val commentLabel = displayText(cells.getOrNull(6)?.text().orEmpty())
 
             RemoteGrade(
                 subjectId = subjectId,
@@ -211,10 +241,31 @@ class OasisRemoteDataSource(
                 grade = grade,
                 dateText = dateText,
                 date = parseFrenchDate(dateText),
+                averageLabel = averageLabel,
+                rankLabel = rankLabel,
+                commentLabel = commentLabel,
+                coefficientLabel = "—",
                 semester = semester,
                 academicYear = academicYear,
             )
         }
+    }
+
+    private fun fetchProfilePhotoBytes(client: OkHttpClient, baseUrl: String, studentId: String): ByteArray? {
+        val photoUrl = buildPhotoUrl(baseUrl, studentId)
+        return runCatching {
+            client.newCall(
+                Request.Builder()
+                    .url(photoUrl.toHttpUrl())
+                    .get()
+                    .build()
+            ).execute().use { response ->
+                if (!response.isSuccessful) {
+                    return@use null
+                }
+                response.body?.bytes()?.takeIf { it.isNotEmpty() }
+            }
+        }.getOrNull()
     }
 
     private fun parseModuleRows(document: org.jsoup.nodes.Document, academicYear: Int, semester: Int): List<ModuleSummary> {
@@ -310,6 +361,10 @@ private fun ensureTrailingSlash(url: String): String {
     return if (url.endsWith('/')) url else "$url/"
 }
 
+private fun buildPhotoUrl(baseUrl: String, studentId: String): String {
+     return ensureTrailingSlash(baseUrl) + "prod/file/oasis_polytech_paris/" + currentAcademicYear() + "/student/photo/" + studentId + ".png"
+}
+
 private object InsecureTrustManager : X509TrustManager {
     override fun checkClientTrusted(chain: Array<out X509Certificate>?, authType: String?) {
     }
@@ -324,7 +379,7 @@ private object InsecureHostnameVerifier : HostnameVerifier {
     override fun verify(hostname: String?, session: javax.net.ssl.SSLSession?): Boolean = true
 }
 
-private class NoInternetConnectionException(
+class NoInternetConnectionException(
     message: String,
     cause: Throwable? = null,
 ) : IllegalStateException(message, cause)

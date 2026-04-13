@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.malfreyt.alexandre.pops_app.R
 import com.malfreyt.alexandre.pops_app.data.AppContainer
 import com.malfreyt.alexandre.pops_app.data.AppSettings
+import com.malfreyt.alexandre.pops_app.data.OasisAccount
 import com.malfreyt.alexandre.pops_app.data.SemesterSnapshot
 import com.malfreyt.alexandre.pops_app.data.UiGrade
 import com.malfreyt.alexandre.pops_app.data.currentAcademicYear
@@ -28,6 +29,12 @@ enum class OasisTab {
     UES,
 }
 
+enum class GradeSortMode {
+    DATE,
+    MODULE,
+    GRADE,
+}
+
 data class ErrorDialogState(
     val title: String,
     val message: String,
@@ -47,8 +54,10 @@ data class MainUiState(
     val destination: MainDestination = MainDestination.OASIS,
     val selectedYear: Int? = null,
     val selectedTab: OasisTab = OasisTab.EPREUVES,
+    val gradeSortMode: GradeSortMode = GradeSortMode.DATE,
     val isSyncing: Boolean = false,
     val isSaving: Boolean = false,
+    val isSavingAccount: Boolean = false,
     val serverUrlVisible: Boolean = false,
     val advancedSettingsVisible: Boolean = false,
     val snackbarMessage: String? = null,
@@ -62,6 +71,8 @@ class MainViewModel(
 ) : ViewModel() {
     private val repository = appContainer.gradeRepository
     private val context = appContainer.appContext
+    private var allGrades: List<UiGrade> = emptyList()
+    private var allSemesterSnapshots: List<SemesterSnapshot> = emptyList()
 
     private val _uiState = MutableStateFlow(
         MainUiState(
@@ -77,10 +88,12 @@ class MainViewModel(
                 _uiState.update { current ->
                     val shouldReplaceDraft = current.draftSettings.editableEquals(current.savedSettings)
                     val nextDraft = if (shouldReplaceDraft) settings else current.draftSettings.withRuntimeStateFrom(settings)
-                    current.copy(
-                        savedSettings = settings,
-                        draftSettings = nextDraft,
-                        selectedYear = chooseSelectedYear(current.selectedYear, current.grades, current.semesterSnapshots),
+                    applyVisibleAccountData(
+                        current.copy(
+                            savedSettings = settings,
+                            draftSettings = nextDraft,
+                        ),
+                        settings,
                     )
                 }
             }
@@ -88,22 +101,18 @@ class MainViewModel(
 
         viewModelScope.launch {
             repository.observeGrades().collect { grades ->
+                allGrades = grades
                 _uiState.update { current ->
-                    current.copy(
-                        grades = grades,
-                        selectedYear = chooseSelectedYear(current.selectedYear, grades, current.semesterSnapshots),
-                    )
+                    applyVisibleAccountData(current, current.savedSettings)
                 }
             }
         }
 
         viewModelScope.launch {
             repository.observeSemesterSnapshots().collect { snapshots ->
+                allSemesterSnapshots = snapshots
                 _uiState.update { current ->
-                    current.copy(
-                        semesterSnapshots = snapshots,
-                        selectedYear = chooseSelectedYear(current.selectedYear, current.grades, snapshots),
-                    )
+                    applyVisibleAccountData(current, current.savedSettings)
                 }
             }
         }
@@ -121,6 +130,10 @@ class MainViewModel(
         _uiState.update { it.copy(selectedTab = tab) }
     }
 
+    fun setGradeSortMode(mode: GradeSortMode) {
+        _uiState.update { it.copy(gradeSortMode = mode) }
+    }
+
     fun toggleServerUrlSettings() {
         _uiState.update { it.copy(serverUrlVisible = !it.serverUrlVisible) }
     }
@@ -129,8 +142,6 @@ class MainViewModel(
         _uiState.update { it.copy(advancedSettingsVisible = !it.advancedSettingsVisible) }
     }
 
-    fun updateLogin(value: String) = updateDraftSettings { copy(login = value) }
-    fun updatePassword(value: String) = updateDraftSettings { copy(password = value) }
     fun updateOasisUrl(value: String) = updateDraftSettings { copy(oasisBaseUrl = value) }
     fun updateIgnoreTlsErrors(value: Boolean) = updateDraftSettings { copy(ignoreTlsErrors = value) }
     fun updatePollingMinutes(value: Int) = updateDraftSettings { copy(pollingMinutes = value) }
@@ -140,13 +151,52 @@ class MainViewModel(
     fun updateNotifyUpdatedGrades(value: Boolean) = updateDraftSettings { copy(notifyUpdatedGrades = value) }
     fun updateNotifyErrors(value: Boolean) = updateDraftSettings { copy(notifyErrors = value) }
 
-    fun applyCredential(login: String, password: String) {
-        _uiState.update { state ->
-            state.copy(
-                draftSettings = state.draftSettings.copy(login = login, password = password),
-            )
+    fun selectAccount(accountId: String) {
+        repository.selectAccount(accountId)
+    }
+
+    fun saveAccount(existingAccountId: String?, login: String, password: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isSavingAccount = true, errorDialog = null) }
+            try {
+                val account = repository.upsertAccount(existingAccountId, login, password)
+                SyncScheduler.reschedule(appContainer.appContext, repository.readSettings())
+                enqueueSnackbar(
+                    if (existingAccountId == null) {
+                        context.getString(R.string.account_added, account.resolvedDisplayName())
+                    } else {
+                        context.getString(R.string.account_updated, account.resolvedDisplayName())
+                    }
+                )
+                _uiState.update {
+                    it.copy(
+                        isSavingAccount = false,
+                        pendingCredentialSave = CredentialSaveRequest(login = login.trim(), password = password),
+                    )
+                }
+            } catch (error: Exception) {
+                _uiState.update {
+                    it.copy(
+                        isSavingAccount = false,
+                        errorDialog = ErrorDialogState(
+                            title = context.getString(R.string.error_connection_title),
+                            message = error.message ?: context.getString(R.string.error_connection_message),
+                            technicalDetails = error.toTechnicalDetails(),
+                        ),
+                    )
+                }
+            }
         }
-        enqueueSnackbar(context.getString(R.string.credentials_loaded))
+    }
+
+    fun removeSelectedAccount() {
+        val selectedAccount = _uiState.value.savedSettings.selectedAccountOrNull() ?: return
+        viewModelScope.launch {
+            repository.removeAccount(selectedAccount.id)
+            NotificationHelper.clearSyncFailureNotification(appContainer.appContext, selectedAccount.id)
+            SyncScheduler.reschedule(appContainer.appContext, repository.readSettings())
+            enqueueSnackbar(context.getString(R.string.account_removed, selectedAccount.resolvedDisplayName()))
+        }
     }
 
     fun consumeCredentialSaveRequest() {
@@ -167,7 +217,9 @@ class MainViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isSaving = true, errorDialog = null) }
             try {
-                repository.testConnection(candidate)
+                candidate.selectedAccountOrNull()?.takeIf(OasisAccount::hasCredentials)?.let { account ->
+                    repository.testConnection(candidate, account.login, account.password)
+                }
                 repository.saveSettings(candidate)
                 SyncScheduler.reschedule(appContainer.appContext, repository.readSettings())
                 enqueueSnackbar(context.getString(R.string.settings_saved))
@@ -175,16 +227,9 @@ class MainViewModel(
                     it.copy(
                         isSaving = false,
                         destination = MainDestination.OASIS,
-                        pendingCredentialSave = candidate.takeIf(AppSettings::hasCredentials)?.let { settings ->
-                            CredentialSaveRequest(login = settings.login, password = settings.password)
-                        },
                     )
                 }
             } catch (error: Exception) {
-                repository.saveSyncError(
-                    message = error.message ?: context.getString(R.string.error_connection_impossible),
-                    technicalDetails = error.toTechnicalDetails(),
-                )
                 _uiState.update {
                     it.copy(
                         isSaving = false,
@@ -201,7 +246,7 @@ class MainViewModel(
 
     fun refresh() {
         val settings = _uiState.value.savedSettings
-        if (!settings.canSync()) {
+        if (!settings.selectedAccountCanSync()) {
             _uiState.update { it.copy(destination = MainDestination.SETTINGS) }
             enqueueSnackbar(context.getString(R.string.settings_configure_before_sync))
             return
@@ -210,18 +255,46 @@ class MainViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isSyncing = true, errorDialog = null) }
             try {
-                val report = repository.sync(settings)
+                val report = repository.syncSelectedAccount()
                 SyncScheduler.reschedule(appContainer.appContext, repository.readSettings())
                 if (repository.readSettings().notificationsEnabled) {
                     NotificationHelper.notifyChanges(appContainer.appContext, repository.readSettings(), report.changes)
                 }
+                NotificationHelper.clearSyncFailureNotification(appContainer.appContext, report.accountId)
                 enqueueSnackbar(report.summary)
                 _uiState.update { it.copy(isSyncing = false) }
             } catch (error: Exception) {
-                repository.saveSyncError(
-                    message = error.message ?: context.getString(R.string.error_sync_generic),
-                    technicalDetails = error.toTechnicalDetails(),
-                )
+                _uiState.update {
+                    it.copy(
+                        isSyncing = false,
+                        errorDialog = ErrorDialogState(
+                            title = context.getString(R.string.error_sync_title),
+                            message = error.message ?: context.getString(R.string.error_sync_message),
+                            technicalDetails = error.toTechnicalDetails(),
+                        ),
+                    )
+                }
+            }
+        }
+    }
+
+    fun hardRefresh() {
+        val settings = _uiState.value.savedSettings
+        if (!settings.selectedAccountCanSync()) {
+            _uiState.update { it.copy(destination = MainDestination.SETTINGS) }
+            enqueueSnackbar(context.getString(R.string.settings_configure_before_sync))
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isSyncing = true, errorDialog = null) }
+            try {
+                repository.clearSelectedAccountCache()
+                val report = repository.syncSelectedAccount()
+                SyncScheduler.reschedule(appContainer.appContext, repository.readSettings())
+                enqueueSnackbar(report.summary)
+                _uiState.update { it.copy(isSyncing = false) }
+            } catch (error: Exception) {
                 _uiState.update {
                     it.copy(
                         isSyncing = false,
@@ -257,6 +330,25 @@ class MainViewModel(
                 snackbarToken = current.snackbarToken + 1L,
             )
         }
+    }
+
+    private fun applyVisibleAccountData(current: MainUiState, settings: AppSettings): MainUiState {
+        val selectedAccountId = settings.selectedAccountOrNull()?.id
+        val visibleGrades = if (selectedAccountId == null) {
+            emptyList()
+        } else {
+            allGrades.filter { it.accountId == selectedAccountId }
+        }
+        val visibleSnapshots = if (selectedAccountId == null) {
+            emptyList()
+        } else {
+            allSemesterSnapshots.filter { it.accountId == selectedAccountId }
+        }
+        return current.copy(
+            grades = visibleGrades,
+            semesterSnapshots = visibleSnapshots,
+            selectedYear = chooseSelectedYear(current.selectedYear, visibleGrades, visibleSnapshots),
+        )
     }
 
     private fun chooseSelectedYear(selectedYear: Int?, grades: List<UiGrade>, snapshots: List<SemesterSnapshot>): Int {

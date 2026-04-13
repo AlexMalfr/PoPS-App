@@ -17,6 +17,7 @@ import com.malfreyt.alexandre.pops_app.MainActivity
 import com.malfreyt.alexandre.pops_app.R
 import com.malfreyt.alexandre.pops_app.data.AppSettings
 import com.malfreyt.alexandre.pops_app.data.NoteChangeType
+import com.malfreyt.alexandre.pops_app.data.OasisAccount
 import com.malfreyt.alexandre.pops_app.data.SyncChange
 
 object NotificationHelper {
@@ -28,7 +29,7 @@ object NotificationHelper {
     private const val NEW_NOTIFICATION_ID = 1001
     private const val PENDING_NOTIFICATION_ID = 1002
     private const val UPDATED_NOTIFICATION_ID = 1003
-    private const val FAILURE_NOTIFICATION_ID = 1004
+    private const val FAILURE_NOTIFICATION_ID_BASE = 10_000
 
     fun createChannel(context: Context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
@@ -74,6 +75,8 @@ object NotificationHelper {
             return
         }
 
+        val showAccountLabel = settings.accounts.count(OasisAccount::hasCredentials) > 1
+
         GradeNotificationKind.entries.forEach { kind ->
             val matchingChanges = changes.filter { classify(it) == kind }
             if (matchingChanges.isEmpty() || !kind.isEnabled(settings)) {
@@ -91,7 +94,7 @@ object NotificationHelper {
                 .setSmallIcon(android.R.drawable.stat_notify_more)
                 .setContentTitle(context.getString(kind.titleRes))
                 .setContentText(buildSummary(context, kind, matchingChanges.size))
-                .setStyle(NotificationCompat.BigTextStyle().bigText(buildDetails(context, kind, matchingChanges)))
+                .setStyle(NotificationCompat.BigTextStyle().bigText(buildDetails(context, kind, matchingChanges, showAccountLabel)))
                 .setContentIntent(pendingIntent)
                 .setAutoCancel(true)
                 .setCategory(kind.category)
@@ -103,6 +106,7 @@ object NotificationHelper {
 
     fun notifySyncFailure(
         context: Context,
+        account: OasisAccount,
         attempts: Int,
         errorMessage: String,
         technicalDetails: String,
@@ -114,16 +118,17 @@ object NotificationHelper {
 
         val deleteIntent = PendingIntent.getBroadcast(
             context,
-            1,
+            failureNotificationId(account.id),
             Intent(context, NotificationActionReceiver::class.java).apply {
                 action = NotificationActionReceiver.ACTION_SYNC_FAILURE_DISMISSED
+                putExtra(NotificationActionReceiver.EXTRA_ACCOUNT_ID, account.id)
             },
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
         val contentIntent = PendingIntent.getActivity(
             context,
-            2,
+            failureNotificationId(account.id),
             Intent(context, MainActivity::class.java),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
@@ -140,7 +145,7 @@ object NotificationHelper {
 
         val notification = NotificationCompat.Builder(context, CHANNEL_SYNC_ERRORS)
             .setSmallIcon(android.R.drawable.stat_notify_error)
-            .setContentTitle(context.getString(R.string.notification_sync_failure_title))
+            .setContentTitle(context.getString(R.string.notification_sync_failure_title, account.resolvedDisplayName()))
             .setContentText(context.getString(R.string.notification_sync_failure_content, attempts))
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
             .setDeleteIntent(deleteIntent)
@@ -150,11 +155,11 @@ object NotificationHelper {
             .setOnlyAlertOnce(onlyAlertOnce)
             .build()
 
-        NotificationManagerCompat.from(context).notify(FAILURE_NOTIFICATION_ID, notification)
+        NotificationManagerCompat.from(context).notify(failureNotificationId(account.id), notification)
     }
 
-    fun clearSyncFailureNotification(context: Context) {
-        NotificationManagerCompat.from(context).cancel(FAILURE_NOTIFICATION_ID)
+    fun clearSyncFailureNotification(context: Context, accountId: String) {
+        NotificationManagerCompat.from(context).cancel(failureNotificationId(accountId))
     }
 
     private fun buildChannel(
@@ -177,24 +182,33 @@ object NotificationHelper {
         return context.getString(kind.summaryRes, count)
     }
 
-    private fun formatLine(context: Context, kind: GradeNotificationKind, change: SyncChange): String {
+    private fun formatLine(context: Context, kind: GradeNotificationKind, change: SyncChange, showAccountLabel: Boolean): String {
         val prefix = when (kind) {
             GradeNotificationKind.NEW -> context.getString(R.string.notification_line_prefix_new)
             GradeNotificationKind.PENDING -> context.getString(R.string.notification_line_prefix_pending)
             GradeNotificationKind.UPDATED -> context.getString(R.string.notification_line_prefix_updated)
         }
-        return context.getString(R.string.notification_line_format, prefix, change.subject, change.name, change.gradeLabel)
+        val subjectLabel = if (showAccountLabel) {
+            "${change.accountLabel} · ${change.subject}"
+        } else {
+            change.subject
+        }
+        return context.getString(R.string.notification_line_format, prefix, subjectLabel, change.name, change.gradeLabel)
     }
 
-    private fun buildDetails(context: Context, kind: GradeNotificationKind, changes: List<SyncChange>): String {
+    private fun buildDetails(context: Context, kind: GradeNotificationKind, changes: List<SyncChange>, showAccountLabel: Boolean): String {
         return buildString {
             changes.take(5).forEach { change ->
-                appendLine(formatLine(context, kind, change))
+                appendLine(formatLine(context, kind, change, showAccountLabel))
             }
             if (changes.size > 5) {
                 append(context.getString(R.string.notification_more_changes, changes.size - 5))
             }
         }.trim()
+    }
+
+    private fun failureNotificationId(accountId: String): Int {
+        return FAILURE_NOTIFICATION_ID_BASE + ((accountId.hashCode() and 0x7fffffff) % 100_000)
     }
 
     private fun classify(change: SyncChange): GradeNotificationKind {

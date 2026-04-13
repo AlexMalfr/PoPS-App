@@ -1,8 +1,10 @@
 package com.malfreyt.alexandre.pops_app.data
 
 import android.content.Context
+import android.net.Uri
 import android.util.Log
 import com.malfreyt.alexandre.pops_app.R
+import java.io.File
 import java.time.LocalDate
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -31,58 +33,166 @@ class GradeRepository(
         settingsStore.saveSettings(settings)
     }
 
-    suspend fun testConnection(settings: AppSettings) {
-        require(settings.canSync()) { context.getString(R.string.error_missing_credentials_url) }
-        oasisRemoteDataSource.testConnection(settings)
+    suspend fun testConnection(settings: AppSettings, login: String, password: String) {
+        require(login.isNotBlank() && password.isNotBlank() && settings.oasisBaseUrl.isNotBlank()) {
+            context.getString(R.string.error_missing_credentials_url)
+        }
+        oasisRemoteDataSource.testConnection(settings, login, password)
     }
 
-    fun saveSyncError(message: String, technicalDetails: String) {
-        settingsStore.saveSyncError(message, technicalDetails)
+    fun saveAccount(account: OasisAccount, select: Boolean = false) {
+        settingsStore.saveAccount(account, select)
     }
 
-    fun recordBackgroundFailure(error: Throwable): FailureNotificationState {
-        val message = error.message ?: context.getString(R.string.error_oasis_sync_generic)
-        val details = error.toTechnicalDetails()
-        Log.e(TAG, "Background sync failed", error)
-        return settingsStore.recordBackgroundFailure(message, details)
+    fun selectAccount(accountId: String) {
+        settingsStore.selectAccount(accountId)
     }
 
-    suspend fun sync(settingsOverride: AppSettings? = null): SyncReport {
-        val settings = settingsOverride ?: settingsStore.readSettings()
-        require(settings.canSync()) { context.getString(R.string.error_missing_credentials_url) }
+    suspend fun removeAccount(accountId: String) {
+        deleteAccountPhoto(accountId)
+        settingsStore.removeAccount(accountId)
+        localStore.removeAccount(accountId)
+    }
 
-        Log.i(TAG, "Starting sync against ${settings.oasisBaseUrl}")
+    suspend fun upsertAccount(existingAccountId: String?, login: String, password: String): OasisAccount {
+        val settings = settingsStore.readSettings()
+        val normalizedLogin = login.trim()
+        require(normalizedLogin.isNotBlank() && password.isNotBlank() && settings.oasisBaseUrl.isNotBlank()) {
+            context.getString(R.string.error_missing_credentials_url)
+        }
 
-        val remoteSemesters = oasisRemoteDataSource.fetchSemesters(settings)
-        val remoteGrades = remoteSemesters.flatMap { it.exams }.sortedWith(
-            compareByDescending<RemoteGrade> { it.academicYear }
-                .thenByDescending { it.semester }
-                .thenByDescending { it.date ?: LocalDate.MIN }
-                .thenBy { it.subject }
-                .thenBy { it.name }
+        if (settings.accounts.any { it.id != existingAccountId && it.login.equals(normalizedLogin, ignoreCase = true) }) {
+            throw IllegalStateException(context.getString(R.string.account_already_exists, normalizedLogin))
+        }
+
+        val profile = oasisRemoteDataSource.fetchAccountProfile(settings, normalizedLogin, password)
+        val existing = existingAccountId?.let { accountId ->
+            settings.accounts.firstOrNull { it.id == accountId }
+        }
+        val accountId = existing?.id ?: existingAccountId ?: java.util.UUID.randomUUID().toString()
+        val profilePhotoUri = profile.profilePhotoBytes?.let { bytes ->
+            saveAccountPhoto(accountId, bytes)
+        } ?: existing?.profilePhotoUrl
+
+        val account = (existing ?: OasisAccount(id = accountId)).copy(
+            login = normalizedLogin,
+            password = password,
+            studentId = profile.studentId,
+            displayName = profile.displayName,
+            profilePhotoUrl = profilePhotoUri,
         )
 
-        val now = System.currentTimeMillis()
-        val existing = localStore.getActiveGrades()
-        val reconcileResult = reconcile(existing, remoteGrades, now)
+        settingsStore.saveAccount(account, select = true)
+        return account
+    }
 
-        localStore.replaceAll(reconcileResult.persisted)
-        localStore.replaceSemesterSnapshots(remoteSemesters.map(RemoteSemesterData::toSnapshot))
+    suspend fun syncSelectedAccount(): SyncReport {
+        val settings = settingsStore.readSettings()
+        val selectedAccount = settings.selectedAccountOrNull()
+            ?: throw IllegalStateException(context.getString(R.string.error_missing_credentials_url))
+        return syncAccount(selectedAccount.id, settings)
+    }
 
-        val summary = buildSummary(reconcileResult.changes, remoteGrades.size)
-        settingsStore.saveSyncSuccess(summary, now)
-        Log.i(TAG, "Sync succeeded: $summary")
-        return SyncReport(
-            changes = reconcileResult.changes,
-            syncedCount = remoteGrades.size,
-            summary = summary,
+    suspend fun clearSelectedAccountCache() {
+        val settings = settingsStore.readSettings()
+        val selectedAccount = settings.selectedAccountOrNull() ?: return
+        localStore.removeAccount(selectedAccount.id)
+        settingsStore.resetSyncState(selectedAccount.id)
+    }
+
+    suspend fun syncAllAccounts(): BatchSyncReport {
+        val settings = settingsStore.readSettings()
+        if (!settings.hasAnySyncableAccount()) {
+            return BatchSyncReport(changes = emptyList(), syncedAccountCount = 0, failures = emptyList())
+        }
+
+        val changes = mutableListOf<SyncChange>()
+        val failures = mutableListOf<AccountSyncFailure>()
+        var syncedAccountCount = 0
+
+        settings.accounts.filter(OasisAccount::hasCredentials).forEach { account ->
+            try {
+                val report = syncAccount(account.id, settings)
+                syncedAccountCount += 1
+                changes += report.changes
+            } catch (error: Exception) {
+                Log.e(TAG, "Background sync failed for ${account.resolvedDisplayName()}", error)
+                failures += AccountSyncFailure(
+                    accountId = account.id,
+                    accountLabel = account.resolvedDisplayName(),
+                    message = error.message ?: context.getString(R.string.error_oasis_sync_generic),
+                    technicalDetails = error.toTechnicalDetails(),
+                    isNoInternet = error is NoInternetConnectionException,
+                )
+            }
+        }
+
+        return BatchSyncReport(
+            changes = changes,
+            syncedAccountCount = syncedAccountCount,
+            failures = failures,
         )
+    }
+
+    private suspend fun syncAccount(accountId: String, settingsSnapshot: AppSettings): SyncReport {
+        val account = settingsSnapshot.accounts.firstOrNull { it.id == accountId }
+            ?: throw IllegalStateException(context.getString(R.string.error_missing_credentials_url))
+        require(account.hasCredentials() && settingsSnapshot.oasisBaseUrl.isNotBlank()) {
+            context.getString(R.string.error_missing_credentials_url)
+        }
+
+        return try {
+            Log.i(TAG, "Starting sync for ${account.resolvedDisplayName()} against ${settingsSnapshot.oasisBaseUrl}")
+
+            val remoteSemesters = oasisRemoteDataSource.fetchSemesters(settingsSnapshot, account)
+            val remoteGrades = remoteSemesters.flatMap { semester ->
+                val coefficientsByModuleCode = semester.modules.associateBy { it.code }
+                semester.exams.map { exam ->
+                    exam.copy(
+                        coefficientLabel = coefficientsByModuleCode[exam.subjectId]?.coefficientLabel ?: exam.coefficientLabel,
+                    )
+                }
+            }.sortedWith(
+                compareByDescending<RemoteGrade> { it.academicYear }
+                    .thenByDescending { it.semester }
+                    .thenByDescending { it.date ?: LocalDate.MIN }
+                    .thenBy { it.subject }
+                    .thenBy { it.name }
+            )
+
+            val now = System.currentTimeMillis()
+            val existing = localStore.getActiveGrades(account.id)
+            val reconcileResult = reconcile(account, existing, remoteGrades, now, isInitialSync = account.lastSyncAt == null)
+
+            localStore.replaceAllForAccount(account.id, reconcileResult.persisted)
+            localStore.replaceSemesterSnapshots(account.id, remoteSemesters.map { it.toSnapshot(account.id) })
+
+            val summary = buildSummary(reconcileResult.changes, remoteGrades.size)
+            settingsStore.saveSyncSuccess(account.id, summary, now)
+            Log.i(TAG, "Sync succeeded for ${account.resolvedDisplayName()}: $summary")
+            SyncReport(
+                accountId = account.id,
+                accountLabel = account.resolvedDisplayName(),
+                changes = reconcileResult.changes,
+                syncedCount = remoteGrades.size,
+                summary = summary,
+            )
+        } catch (error: Exception) {
+            settingsStore.saveSyncError(
+                accountId = account.id,
+                message = error.message ?: context.getString(R.string.error_oasis_sync_generic),
+                technicalDetails = error.toTechnicalDetails(),
+            )
+            throw error
+        }
     }
 
     private fun reconcile(
+        account: OasisAccount,
         existing: List<StoredGradeEntity>,
         remoteGrades: List<RemoteGrade>,
         now: Long,
+        isInitialSync: Boolean,
     ): ReconcileResult {
         val remaining = existing.groupBy { it.matchGroupKey }
             .mapValues { (_, values) -> values.toMutableList() }
@@ -97,22 +207,29 @@ class GradeRepository(
             val match = findBestMatch(remote, candidates)
 
             if (match == null) {
+                val changeType = if (isInitialSync) NoteChangeType.NONE else NoteChangeType.NEW
                 persisted += remote.toStoredEntity(
+                    accountId = account.id,
                     firstSeenAt = now,
                     lastSeenAt = now,
-                    changeType = NoteChangeType.NEW,
+                    changeType = changeType,
                 )
-                changes += SyncChange(
-                    type = NoteChangeType.NEW,
-                    subject = remote.subject,
-                    name = remote.name,
-                    gradeLabel = formatGrade(remote.grade),
-                    gradePublished = remote.grade != null,
-                )
+                if (!isInitialSync) {
+                    changes += SyncChange(
+                        accountId = account.id,
+                        accountLabel = account.resolvedDisplayName(),
+                        type = NoteChangeType.NEW,
+                        subject = remote.subject,
+                        name = remote.name,
+                        gradeLabel = formatGrade(remote.grade),
+                        gradePublished = remote.grade != null,
+                    )
+                }
             } else {
                 candidates.remove(match)
                 val changed = match.contentFingerprint != remote.buildContentFingerprint()
                 persisted += remote.toStoredEntity(
+                    accountId = account.id,
                     id = match.id,
                     firstSeenAt = match.firstSeenAt,
                     lastSeenAt = now,
@@ -120,6 +237,8 @@ class GradeRepository(
                 )
                 if (changed) {
                     changes += SyncChange(
+                        accountId = account.id,
+                        accountLabel = account.resolvedDisplayName(),
                         type = NoteChangeType.UPDATED,
                         subject = remote.subject,
                         name = remote.name,
@@ -188,6 +307,21 @@ class GradeRepository(
                 }
             }
         }
+    }
+
+    private fun saveAccountPhoto(accountId: String, bytes: ByteArray): String {
+        val file = accountPhotoFile(accountId)
+        file.parentFile?.mkdirs()
+        file.writeBytes(bytes)
+        return Uri.fromFile(file).toString()
+    }
+
+    private fun deleteAccountPhoto(accountId: String) {
+        accountPhotoFile(accountId).delete()
+    }
+
+    private fun accountPhotoFile(accountId: String): File {
+        return File(context.filesDir, "account_photos/$accountId.png")
     }
 
     private companion object {

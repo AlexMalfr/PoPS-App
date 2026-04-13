@@ -39,23 +39,36 @@ class GradeLocalStore(context: Context) {
         }
     }
 
-    suspend fun getActiveGrades(): List<StoredGradeEntity> {
+    suspend fun getActiveGrades(accountId: String): List<StoredGradeEntity> {
         return mutex.withLock {
-            allGradesFlow.value.filter { it.active }
+            allGradesFlow.value.filter { it.active && it.accountId == accountId }
         }
     }
 
-    suspend fun replaceAll(grades: List<StoredGradeEntity>) {
+    suspend fun replaceAllForAccount(accountId: String, grades: List<StoredGradeEntity>) {
         mutex.withLock {
-            writeAllGrades(grades)
-            allGradesFlow.value = grades
+            val merged = allGradesFlow.value.filterNot { it.accountId == accountId } + grades
+            writeAllGrades(merged)
+            allGradesFlow.value = merged
         }
     }
 
-    suspend fun replaceSemesterSnapshots(snapshots: List<SemesterSnapshot>) {
+    suspend fun replaceSemesterSnapshots(accountId: String, snapshots: List<SemesterSnapshot>) {
         mutex.withLock {
-            writeSemesterSnapshots(snapshots)
-            semesterSnapshotsFlow.value = snapshots
+            val merged = semesterSnapshotsFlow.value.filterNot { it.accountId == accountId } + snapshots
+            writeSemesterSnapshots(merged)
+            semesterSnapshotsFlow.value = merged
+        }
+    }
+
+    suspend fun removeAccount(accountId: String) {
+        mutex.withLock {
+            val remainingGrades = allGradesFlow.value.filterNot { it.accountId == accountId }
+            val remainingSnapshots = semesterSnapshotsFlow.value.filterNot { it.accountId == accountId }
+            writeAllGrades(remainingGrades)
+            writeSemesterSnapshots(remainingSnapshots)
+            allGradesFlow.value = remainingGrades
+            semesterSnapshotsFlow.value = remainingSnapshots
         }
     }
 
@@ -71,6 +84,7 @@ class GradeLocalStore(context: Context) {
                 add(
                     StoredGradeEntity(
                         id = item.optString("id"),
+                        accountId = item.optString("accountId"),
                         matchGroupKey = item.optString("matchGroupKey"),
                         contentFingerprint = item.optString("contentFingerprint"),
                         normalizedName = item.optString("normalizedName"),
@@ -80,6 +94,10 @@ class GradeLocalStore(context: Context) {
                         grade = if (item.isNull("grade")) null else item.optDouble("grade"),
                         dateText = item.optString("dateText"),
                         dateEpochDay = if (item.isNull("dateEpochDay")) null else item.optLong("dateEpochDay"),
+                        averageLabel = item.optString("averageLabel", "—"),
+                        rankLabel = item.optString("rankLabel", "—"),
+                        commentLabel = item.optString("commentLabel", "—"),
+                        coefficientLabel = item.optString("coefficientLabel", "—"),
                         semester = item.optInt("semester"),
                         academicYear = item.optInt("academicYear"),
                         firstSeenAt = item.optLong("firstSeenAt"),
@@ -98,6 +116,7 @@ class GradeLocalStore(context: Context) {
             array.put(
                 JSONObject()
                     .put("id", grade.id)
+                    .put("accountId", grade.accountId)
                     .put("matchGroupKey", grade.matchGroupKey)
                     .put("contentFingerprint", grade.contentFingerprint)
                     .put("normalizedName", grade.normalizedName)
@@ -107,6 +126,10 @@ class GradeLocalStore(context: Context) {
                     .put("grade", grade.grade)
                     .put("dateText", grade.dateText)
                     .put("dateEpochDay", grade.dateEpochDay)
+                    .put("averageLabel", grade.averageLabel)
+                    .put("rankLabel", grade.rankLabel)
+                    .put("commentLabel", grade.commentLabel)
+                    .put("coefficientLabel", grade.coefficientLabel)
                     .put("semester", grade.semester)
                     .put("academicYear", grade.academicYear)
                     .put("firstSeenAt", grade.firstSeenAt)
@@ -129,6 +152,7 @@ class GradeLocalStore(context: Context) {
                 val item = array.optJSONObject(index) ?: continue
                 add(
                     SemesterSnapshot(
+                        accountId = item.optString("accountId"),
                         academicYear = item.optInt("academicYear"),
                         semester = item.optInt("semester"),
                         modules = item.optJSONArray("modules").toModuleSummaries(),
@@ -144,6 +168,7 @@ class GradeLocalStore(context: Context) {
         snapshots.forEach { snapshot ->
             array.put(
                 JSONObject()
+                    .put("accountId", snapshot.accountId)
                     .put("academicYear", snapshot.academicYear)
                     .put("semester", snapshot.semester)
                     .put("modules", JSONArray().apply {

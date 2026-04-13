@@ -13,17 +13,13 @@ enum class NoteChangeType {
     UPDATED,
 }
 
-data class AppSettings(
+data class OasisAccount(
+    val id: String = UUID.randomUUID().toString(),
     val login: String = "",
     val password: String = "",
-    val oasisBaseUrl: String = "https://polytech-saclay.oasis.aouka.org/",
-    val notificationsEnabled: Boolean = true,
-    val notifyNewGrades: Boolean = true,
-    val notifyPendingGrades: Boolean = true,
-    val notifyUpdatedGrades: Boolean = true,
-    val notifyErrors: Boolean = true,
-    val pollingMinutes: Int = 30,
-    val ignoreTlsErrors: Boolean = false,
+    val studentId: String = "",
+    val displayName: String = "",
+    val profilePhotoUrl: String? = null,
     val lastSyncAt: Long? = null,
     val lastSyncSummary: String? = null,
     val lastSyncError: String? = null,
@@ -36,14 +32,45 @@ data class AppSettings(
         return login.isNotBlank() && password.isNotBlank()
     }
 
-    fun canSync(): Boolean {
-        return hasCredentials() && oasisBaseUrl.isNotBlank()
+    fun resolvedStudentId(): String {
+        return studentId.ifBlank { login.trim() }
+    }
+
+    fun resolvedDisplayName(): String {
+        return displayName.ifBlank { resolvedStudentId() }
+    }
+}
+
+data class AppSettings(
+    val accounts: List<OasisAccount> = emptyList(),
+    val selectedAccountId: String? = null,
+    val oasisBaseUrl: String = "https://polytech-saclay.oasis.aouka.org/",
+    val notificationsEnabled: Boolean = true,
+    val notifyNewGrades: Boolean = true,
+    val notifyPendingGrades: Boolean = true,
+    val notifyUpdatedGrades: Boolean = true,
+    val notifyErrors: Boolean = true,
+    val pollingMinutes: Int = 30,
+    val ignoreTlsErrors: Boolean = false,
+) {
+    fun hasAccounts(): Boolean {
+        return accounts.isNotEmpty()
+    }
+
+    fun selectedAccountOrNull(): OasisAccount? {
+        return accounts.firstOrNull { it.id == selectedAccountId } ?: accounts.firstOrNull()
+    }
+
+    fun selectedAccountCanSync(): Boolean {
+        return selectedAccountOrNull()?.hasCredentials() == true && oasisBaseUrl.isNotBlank()
+    }
+
+    fun hasAnySyncableAccount(): Boolean {
+        return accounts.any(OasisAccount::hasCredentials) && oasisBaseUrl.isNotBlank()
     }
 
     fun editableEquals(other: AppSettings): Boolean {
-        return login == other.login &&
-            password == other.password &&
-            oasisBaseUrl == other.oasisBaseUrl &&
+        return oasisBaseUrl == other.oasisBaseUrl &&
             notificationsEnabled == other.notificationsEnabled &&
             notifyNewGrades == other.notifyNewGrades &&
             notifyPendingGrades == other.notifyPendingGrades &&
@@ -55,16 +82,25 @@ data class AppSettings(
 
     fun withRuntimeStateFrom(other: AppSettings): AppSettings {
         return copy(
-            lastSyncAt = other.lastSyncAt,
-            lastSyncSummary = other.lastSyncSummary,
-            lastSyncError = other.lastSyncError,
-            lastSyncErrorDetails = other.lastSyncErrorDetails,
-            consecutiveFailureCount = other.consecutiveFailureCount,
-            lastFailureNotificationDay = other.lastFailureNotificationDay,
-            failureNotificationActive = other.failureNotificationActive,
+            accounts = other.accounts,
+            selectedAccountId = other.selectedAccountId,
         )
     }
+
+    fun normalized(): AppSettings {
+        val validSelectedAccountId = selectedAccountId?.takeIf { selectedId ->
+            accounts.any { it.id == selectedId }
+        } ?: accounts.firstOrNull()?.id
+        return copy(selectedAccountId = validSelectedAccountId)
+    }
 }
+
+data class RemoteAccountProfile(
+    val studentId: String,
+    val displayName: String,
+    val profilePhotoUrl: String?,
+    val profilePhotoBytes: ByteArray? = null,
+)
 
 data class RemoteGrade(
     val subjectId: String,
@@ -73,6 +109,10 @@ data class RemoteGrade(
     val grade: Double?,
     val dateText: String,
     val date: LocalDate?,
+    val averageLabel: String,
+    val rankLabel: String,
+    val commentLabel: String,
+    val coefficientLabel: String,
     val semester: Int,
     val academicYear: Int,
 )
@@ -106,6 +146,7 @@ data class UnitSummary(
 )
 
 data class SemesterSnapshot(
+    val accountId: String,
     val academicYear: Int,
     val semester: Int,
     val modules: List<ModuleSummary>,
@@ -123,8 +164,9 @@ data class RemoteSemesterData(
         return exams.isNotEmpty() || modules.isNotEmpty() || units.isNotEmpty()
     }
 
-    fun toSnapshot(): SemesterSnapshot {
+    fun toSnapshot(accountId: String): SemesterSnapshot {
         return SemesterSnapshot(
+            accountId = accountId,
             academicYear = academicYear,
             semester = semester,
             modules = modules,
@@ -135,17 +177,24 @@ data class RemoteSemesterData(
 
 data class UiGrade(
     val id: String,
+    val accountId: String,
     val subjectId: String,
     val subject: String,
     val name: String,
     val gradeLabel: String,
     val dateText: String,
+    val averageLabel: String,
+    val rankLabel: String,
+    val commentLabel: String,
+    val coefficientLabel: String,
     val semester: Int,
     val academicYear: Int,
     val changeType: NoteChangeType,
 )
 
 data class SyncChange(
+    val accountId: String,
+    val accountLabel: String,
     val type: NoteChangeType,
     val subject: String,
     val name: String,
@@ -154,9 +203,25 @@ data class SyncChange(
 )
 
 data class SyncReport(
+    val accountId: String,
+    val accountLabel: String,
     val changes: List<SyncChange>,
     val syncedCount: Int,
     val summary: String,
+)
+
+data class AccountSyncFailure(
+    val accountId: String,
+    val accountLabel: String,
+    val message: String,
+    val technicalDetails: String,
+    val isNoInternet: Boolean,
+)
+
+data class BatchSyncReport(
+    val changes: List<SyncChange>,
+    val syncedAccountCount: Int,
+    val failures: List<AccountSyncFailure>,
 )
 
 data class FailureNotificationState(
@@ -168,6 +233,7 @@ data class FailureNotificationState(
 
 data class StoredGradeEntity(
     val id: String,
+    val accountId: String,
     val matchGroupKey: String,
     val contentFingerprint: String,
     val normalizedName: String,
@@ -177,6 +243,10 @@ data class StoredGradeEntity(
     val grade: Double?,
     val dateText: String,
     val dateEpochDay: Long?,
+    val averageLabel: String,
+    val rankLabel: String,
+    val commentLabel: String,
+    val coefficientLabel: String,
     val semester: Int,
     val academicYear: Int,
     val firstSeenAt: Long,
@@ -188,11 +258,16 @@ data class StoredGradeEntity(
 fun StoredGradeEntity.toUiModel(): UiGrade {
     return UiGrade(
         id = id,
+        accountId = accountId,
         subjectId = subjectId,
         subject = subject,
         name = name,
         gradeLabel = formatGrade(grade),
         dateText = dateText,
+        averageLabel = averageLabel,
+        rankLabel = rankLabel,
+        commentLabel = commentLabel,
+        coefficientLabel = coefficientLabel,
         semester = semester,
         academicYear = academicYear,
         changeType = NoteChangeType.valueOf(changeType),
@@ -200,6 +275,7 @@ fun StoredGradeEntity.toUiModel(): UiGrade {
 }
 
 fun RemoteGrade.toStoredEntity(
+    accountId: String,
     id: String = UUID.randomUUID().toString(),
     firstSeenAt: Long,
     lastSeenAt: Long,
@@ -207,6 +283,7 @@ fun RemoteGrade.toStoredEntity(
 ): StoredGradeEntity {
     return StoredGradeEntity(
         id = id,
+        accountId = accountId,
         matchGroupKey = buildMatchGroupKey(subjectId, academicYear, semester, dateText, date),
         contentFingerprint = buildContentFingerprint(),
         normalizedName = normalizeText(name),
@@ -216,6 +293,10 @@ fun RemoteGrade.toStoredEntity(
         grade = grade,
         dateText = dateText,
         dateEpochDay = date?.toEpochDay(),
+        averageLabel = averageLabel,
+        rankLabel = rankLabel,
+        commentLabel = commentLabel,
+        coefficientLabel = coefficientLabel,
         semester = semester,
         academicYear = academicYear,
         firstSeenAt = firstSeenAt,
@@ -234,6 +315,10 @@ fun RemoteGrade.buildContentFingerprint(): String {
             grade?.toString() ?: "null",
             dateText,
             date?.toString() ?: "null",
+            averageLabel,
+            rankLabel,
+            commentLabel,
+            coefficientLabel,
             semester.toString(),
             academicYear.toString(),
         ).joinToString("|")

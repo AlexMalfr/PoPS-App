@@ -7,7 +7,8 @@ import androidx.security.crypto.MasterKey
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import java.time.LocalDate
+import org.json.JSONArray
+import org.json.JSONObject
 
 class SettingsStore(context: Context) {
     private val preferences: SharedPreferences
@@ -37,54 +38,139 @@ class SettingsStore(context: Context) {
     }
 
     fun saveSettings(settings: AppSettings) {
-        preferences.edit()
-            .putString(KEY_LOGIN, settings.login)
-            .putString(KEY_PASSWORD, settings.password)
-            .putString(KEY_OASIS_BASE_URL, settings.oasisBaseUrl)
-            .putBoolean(KEY_NOTIFICATIONS_ENABLED, settings.notificationsEnabled)
-            .putBoolean(KEY_NOTIFY_NEW_GRADES, settings.notifyNewGrades)
-            .putBoolean(KEY_NOTIFY_PENDING_GRADES, settings.notifyPendingGrades)
-            .putBoolean(KEY_NOTIFY_UPDATED_GRADES, settings.notifyUpdatedGrades)
-            .putBoolean(KEY_NOTIFY_ERRORS, settings.notifyErrors)
-            .putInt(KEY_POLLING_MINUTES, settings.pollingMinutes)
-            .putBoolean(KEY_IGNORE_TLS_ERRORS, settings.ignoreTlsErrors)
-            .apply()
-        publish()
+        persist(settings.normalized())
     }
 
-    fun saveSyncSuccess(summary: String, timestamp: Long) {
-        preferences.edit()
-            .putLong(KEY_LAST_SYNC_AT, timestamp)
-            .putString(KEY_LAST_SYNC_SUMMARY, summary)
-            .remove(KEY_LAST_SYNC_ERROR)
-            .remove(KEY_LAST_SYNC_ERROR_DETAILS)
-            .putInt(KEY_CONSECUTIVE_FAILURE_COUNT, 0)
-            .remove(KEY_LAST_FAILURE_NOTIFICATION_DAY)
-            .putBoolean(KEY_FAILURE_NOTIFICATION_ACTIVE, false)
-            .apply()
-        publish()
+    fun saveAccount(account: OasisAccount, select: Boolean = false) {
+        val normalizedAccount = account.normalized()
+        mutateSettings { current ->
+            val accounts = current.accounts.toMutableList()
+            val existingIndex = accounts.indexOfFirst { it.id == normalizedAccount.id }
+            if (existingIndex >= 0) {
+                accounts[existingIndex] = normalizedAccount
+            } else {
+                accounts += normalizedAccount
+            }
+
+            current.copy(
+                accounts = accounts,
+                selectedAccountId = when {
+                    select -> normalizedAccount.id
+                    current.selectedAccountId == null -> normalizedAccount.id
+                    else -> current.selectedAccountId
+                },
+            )
+        }
     }
 
-    fun saveSyncError(message: String, technicalDetails: String) {
-        preferences.edit()
-            .putString(KEY_LAST_SYNC_ERROR, message)
-            .putString(KEY_LAST_SYNC_ERROR_DETAILS, technicalDetails)
-            .apply()
-        publish()
+    fun removeAccount(accountId: String) {
+        mutateSettings { current ->
+            current.copy(
+                accounts = current.accounts.filterNot { it.id == accountId },
+                selectedAccountId = current.selectedAccountId?.takeUnless { it == accountId },
+            )
+        }
     }
 
-    fun recordBackgroundFailure(message: String, technicalDetails: String): FailureNotificationState {
+    fun selectAccount(accountId: String) {
+        mutateSettings { current ->
+            current.copy(selectedAccountId = accountId)
+        }
+    }
+
+    fun saveSyncSuccess(accountId: String, summary: String, timestamp: Long) {
+        mutateSettings { current ->
+            current.copy(
+                accounts = current.accounts.map { account ->
+                    if (account.id != accountId) {
+                        account
+                    } else {
+                        account.copy(
+                            lastSyncAt = timestamp,
+                            lastSyncSummary = summary,
+                            lastSyncError = null,
+                            lastSyncErrorDetails = null,
+                            consecutiveFailureCount = 0,
+                            lastFailureNotificationDay = null,
+                            failureNotificationActive = false,
+                        )
+                    }
+                }
+            )
+        }
+    }
+
+    fun saveSyncError(accountId: String, message: String, technicalDetails: String) {
+        mutateSettings { current ->
+            current.copy(
+                accounts = current.accounts.map { account ->
+                    if (account.id != accountId) account else account.copy(
+                        lastSyncError = message,
+                        lastSyncErrorDetails = technicalDetails,
+                    )
+                }
+            )
+        }
+    }
+
+    fun resetSyncState(accountId: String) {
+        mutateSettings { current ->
+            current.copy(
+                accounts = current.accounts.map { account ->
+                    if (account.id != accountId) account else account.copy(
+                        lastSyncAt = null,
+                        lastSyncSummary = null,
+                        lastSyncError = null,
+                        lastSyncErrorDetails = null,
+                        consecutiveFailureCount = 0,
+                        lastFailureNotificationDay = null,
+                        failureNotificationActive = false,
+                    )
+                }
+            )
+        }
+    }
+
+    fun updateAccountProfile(accountId: String, profile: RemoteAccountProfile) {
+        mutateSettings { current ->
+            current.copy(
+                accounts = current.accounts.map { account ->
+                    if (account.id != accountId) {
+                        account
+                    } else {
+                        account.copy(
+                            studentId = profile.studentId.ifBlank { account.resolvedStudentId() },
+                            displayName = profile.displayName.ifBlank { account.displayName },
+                            profilePhotoUrl = profile.profilePhotoUrl ?: account.profilePhotoUrl,
+                        ).normalized()
+                    }
+                }
+            )
+        }
+    }
+
+    fun recordBackgroundFailure(accountId: String, message: String, technicalDetails: String): FailureNotificationState {
         val current = readSettings()
-        val attempts = current.consecutiveFailureCount + 1
-        val today = LocalDate.now().toEpochDay()
-        val shouldOnlyAlertOnce = current.lastFailureNotificationDay == today && current.failureNotificationActive
+        val account = current.accounts.firstOrNull { it.id == accountId }
+        val attempts = (account?.consecutiveFailureCount ?: 0) + 1
+        val today = java.time.LocalDate.now().toEpochDay()
+        val shouldOnlyAlertOnce = account?.lastFailureNotificationDay == today && account.failureNotificationActive
 
-        preferences.edit()
-            .putString(KEY_LAST_SYNC_ERROR, message)
-            .putString(KEY_LAST_SYNC_ERROR_DETAILS, technicalDetails)
-            .putInt(KEY_CONSECUTIVE_FAILURE_COUNT, attempts)
-            .apply()
-        publish()
+        mutateSettings { settings ->
+            settings.copy(
+                accounts = settings.accounts.map { item ->
+                    if (item.id != accountId) {
+                        item
+                    } else {
+                        item.copy(
+                            lastSyncError = message,
+                            lastSyncErrorDetails = technicalDetails,
+                            consecutiveFailureCount = attempts,
+                        )
+                    }
+                }
+            )
+        }
 
         return FailureNotificationState(
             attempts = attempts,
@@ -94,41 +180,55 @@ class SettingsStore(context: Context) {
         )
     }
 
-    fun markFailureNotificationShown(epochDay: Long) {
-        preferences.edit()
-            .putLong(KEY_LAST_FAILURE_NOTIFICATION_DAY, epochDay)
-            .putBoolean(KEY_FAILURE_NOTIFICATION_ACTIVE, true)
-            .apply()
-        publish()
+    fun markFailureNotificationShown(accountId: String, epochDay: Long) {
+        mutateSettings { current ->
+            current.copy(
+                accounts = current.accounts.map { account ->
+                    if (account.id != accountId) account else account.copy(
+                        lastFailureNotificationDay = epochDay,
+                        failureNotificationActive = true,
+                    )
+                }
+            )
+        }
     }
 
-    fun markFailureNotificationDismissed() {
-        preferences.edit()
-            .putBoolean(KEY_FAILURE_NOTIFICATION_ACTIVE, false)
-            .apply()
-        publish()
+    fun markFailureNotificationDismissed(accountId: String) {
+        mutateSettings { current ->
+            current.copy(
+                accounts = current.accounts.map { account ->
+                    if (account.id != accountId) account else account.copy(failureNotificationActive = false)
+                }
+            )
+        }
     }
 
     private fun readSettingsFromPreferences(): AppSettings {
+        val jsonText = preferences.getString(KEY_SETTINGS_JSON, null) ?: return AppSettings()
+        val json = runCatching { JSONObject(jsonText) }.getOrElse { return AppSettings() }
         return AppSettings(
-            login = preferences.getString(KEY_LOGIN, "") ?: "",
-            password = preferences.getString(KEY_PASSWORD, "") ?: "",
-            oasisBaseUrl = preferences.getString(KEY_OASIS_BASE_URL, "https://polytech-saclay.oasis.aouka.org/") ?: "https://polytech-saclay.oasis.aouka.org/",
-            notificationsEnabled = preferences.getBoolean(KEY_NOTIFICATIONS_ENABLED, true),
-            notifyNewGrades = preferences.getBoolean(KEY_NOTIFY_NEW_GRADES, true),
-            notifyPendingGrades = preferences.getBoolean(KEY_NOTIFY_PENDING_GRADES, true),
-            notifyUpdatedGrades = preferences.getBoolean(KEY_NOTIFY_UPDATED_GRADES, true),
-            notifyErrors = preferences.getBoolean(KEY_NOTIFY_ERRORS, true),
-            pollingMinutes = preferences.getInt(KEY_POLLING_MINUTES, 30),
-            ignoreTlsErrors = preferences.getBoolean(KEY_IGNORE_TLS_ERRORS, false),
-            lastSyncAt = preferences.getLong(KEY_LAST_SYNC_AT, 0L).takeIf { it > 0L },
-            lastSyncSummary = preferences.getString(KEY_LAST_SYNC_SUMMARY, null),
-            lastSyncError = preferences.getString(KEY_LAST_SYNC_ERROR, null),
-            lastSyncErrorDetails = preferences.getString(KEY_LAST_SYNC_ERROR_DETAILS, null),
-            consecutiveFailureCount = preferences.getInt(KEY_CONSECUTIVE_FAILURE_COUNT, 0),
-            lastFailureNotificationDay = preferences.getLong(KEY_LAST_FAILURE_NOTIFICATION_DAY, 0L).takeIf { it > 0L },
-            failureNotificationActive = preferences.getBoolean(KEY_FAILURE_NOTIFICATION_ACTIVE, false),
-        )
+            accounts = json.optJSONArray("accounts").toAccounts(),
+            selectedAccountId = json.optString("selectedAccountId").takeIf { it.isNotBlank() },
+            oasisBaseUrl = json.optString("oasisBaseUrl", DEFAULT_OASIS_BASE_URL).ifBlank { DEFAULT_OASIS_BASE_URL },
+            notificationsEnabled = json.optBoolean("notificationsEnabled", true),
+            notifyNewGrades = json.optBoolean("notifyNewGrades", true),
+            notifyPendingGrades = json.optBoolean("notifyPendingGrades", true),
+            notifyUpdatedGrades = json.optBoolean("notifyUpdatedGrades", true),
+            notifyErrors = json.optBoolean("notifyErrors", true),
+            pollingMinutes = json.optInt("pollingMinutes", 30),
+            ignoreTlsErrors = json.optBoolean("ignoreTlsErrors", false),
+        ).normalized()
+    }
+
+    private fun mutateSettings(transform: (AppSettings) -> AppSettings) {
+        persist(transform(readSettings()).normalized())
+    }
+
+    private fun persist(settings: AppSettings) {
+        preferences.edit()
+            .putString(KEY_SETTINGS_JSON, settings.toJson().toString())
+            .apply()
+        publish()
     }
 
     private fun publish() {
@@ -137,22 +237,80 @@ class SettingsStore(context: Context) {
 
     companion object {
         private const val PREFS_NAME = "pops_secure_preferences"
-        private const val KEY_LOGIN = "login"
-        private const val KEY_PASSWORD = "password"
-        private const val KEY_OASIS_BASE_URL = "oasis_base_url"
-        private const val KEY_NOTIFICATIONS_ENABLED = "notifications_enabled"
-        private const val KEY_NOTIFY_NEW_GRADES = "notify_new_grades"
-        private const val KEY_NOTIFY_PENDING_GRADES = "notify_pending_grades"
-        private const val KEY_NOTIFY_UPDATED_GRADES = "notify_updated_grades"
-        private const val KEY_NOTIFY_ERRORS = "notify_errors"
-        private const val KEY_POLLING_MINUTES = "polling_minutes"
-        private const val KEY_IGNORE_TLS_ERRORS = "ignore_tls_errors"
-        private const val KEY_LAST_SYNC_AT = "last_sync_at"
-        private const val KEY_LAST_SYNC_SUMMARY = "last_sync_summary"
-        private const val KEY_LAST_SYNC_ERROR = "last_sync_error"
-        private const val KEY_LAST_SYNC_ERROR_DETAILS = "last_sync_error_details"
-        private const val KEY_CONSECUTIVE_FAILURE_COUNT = "consecutive_failure_count"
-        private const val KEY_LAST_FAILURE_NOTIFICATION_DAY = "last_failure_notification_day"
-        private const val KEY_FAILURE_NOTIFICATION_ACTIVE = "failure_notification_active"
+        private const val KEY_SETTINGS_JSON = "settings_json_v2"
+        private const val DEFAULT_OASIS_BASE_URL = "https://polytech-saclay.oasis.aouka.org/"
     }
+}
+
+private fun AppSettings.toJson(): JSONObject {
+    return JSONObject()
+        .put("accounts", JSONArray().apply {
+            accounts.forEach { account ->
+                put(account.toJson())
+            }
+        })
+        .put("selectedAccountId", selectedAccountId)
+        .put("oasisBaseUrl", oasisBaseUrl)
+        .put("notificationsEnabled", notificationsEnabled)
+        .put("notifyNewGrades", notifyNewGrades)
+        .put("notifyPendingGrades", notifyPendingGrades)
+        .put("notifyUpdatedGrades", notifyUpdatedGrades)
+        .put("notifyErrors", notifyErrors)
+        .put("pollingMinutes", pollingMinutes)
+        .put("ignoreTlsErrors", ignoreTlsErrors)
+}
+
+private fun OasisAccount.toJson(): JSONObject {
+    return JSONObject()
+        .put("id", id)
+        .put("login", login)
+        .put("password", password)
+        .put("studentId", resolvedStudentId())
+        .put("displayName", displayName)
+        .put("profilePhotoUrl", profilePhotoUrl)
+        .put("lastSyncAt", lastSyncAt)
+        .put("lastSyncSummary", lastSyncSummary)
+        .put("lastSyncError", lastSyncError)
+        .put("lastSyncErrorDetails", lastSyncErrorDetails)
+        .put("consecutiveFailureCount", consecutiveFailureCount)
+        .put("lastFailureNotificationDay", lastFailureNotificationDay)
+        .put("failureNotificationActive", failureNotificationActive)
+}
+
+private fun JSONArray?.toAccounts(): List<OasisAccount> {
+    if (this == null) {
+        return emptyList()
+    }
+    return buildList {
+        for (index in 0 until length()) {
+            val item = optJSONObject(index) ?: continue
+            add(
+                OasisAccount(
+                    id = item.optString("id"),
+                    login = item.optString("login"),
+                    password = item.optString("password"),
+                    studentId = item.optString("studentId"),
+                    displayName = item.optString("displayName"),
+                    profilePhotoUrl = item.optString("profilePhotoUrl").takeIf { it.isNotBlank() },
+                    lastSyncAt = item.optLong("lastSyncAt", 0L).takeIf { it > 0L },
+                    lastSyncSummary = item.optString("lastSyncSummary").takeIf { it.isNotBlank() },
+                    lastSyncError = item.optString("lastSyncError").takeIf { it.isNotBlank() },
+                    lastSyncErrorDetails = item.optString("lastSyncErrorDetails").takeIf { it.isNotBlank() },
+                    consecutiveFailureCount = item.optInt("consecutiveFailureCount", 0),
+                    lastFailureNotificationDay = item.optLong("lastFailureNotificationDay", 0L).takeIf { it > 0L },
+                    failureNotificationActive = item.optBoolean("failureNotificationActive", false),
+                ).normalized()
+            )
+        }
+    }
+}
+
+private fun OasisAccount.normalized(): OasisAccount {
+    return copy(
+        login = login.trim(),
+        password = password,
+        studentId = resolvedStudentId(),
+        displayName = displayName.trim(),
+        profilePhotoUrl = profilePhotoUrl?.takeIf { it.isNotBlank() },
+    )
 }

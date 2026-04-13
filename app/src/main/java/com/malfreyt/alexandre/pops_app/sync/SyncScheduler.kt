@@ -14,7 +14,7 @@ object SyncScheduler {
 
     fun reschedule(context: Context, settings: AppSettings) {
         val workManager = WorkManager.getInstance(context)
-        if (!settings.canSync() || !settings.notificationsEnabled || settings.pollingMinutes == 0) {
+        if (!settings.hasAnySyncableAccount() || !settings.notificationsEnabled || settings.pollingMinutes == 0) {
             workManager.cancelUniqueWork(WORK_NAME)
             return
         }

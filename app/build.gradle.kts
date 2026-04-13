@@ -3,6 +3,11 @@ plugins {
     alias(libs.plugins.kotlin.compose)
 }
 
+val localAppData = System.getenv("LOCALAPPDATA")
+if (System.getProperty("os.name").startsWith("Windows", ignoreCase = true) && !localAppData.isNullOrBlank()) {
+    layout.buildDirectory.set(file("$localAppData/PoPS-App-Build/app"))
+}
+
 android {
     namespace = "com.malfreyt.alexandre.pops_app"
     compileSdk {
@@ -63,6 +68,7 @@ dependencies {
     implementation(libs.jsoup)
     implementation(libs.okhttp)
     implementation(libs.okhttp.urlconnection)
+    implementation(libs.coil.compose)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
