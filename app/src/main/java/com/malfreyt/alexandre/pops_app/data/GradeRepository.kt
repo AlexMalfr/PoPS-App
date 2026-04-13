@@ -100,6 +100,10 @@ class GradeRepository(
         settingsStore.resetSyncState(selectedAccount.id)
     }
 
+    fun cancelActiveSync() {
+        oasisRemoteDataSource.cancelOngoingRequests()
+    }
+
     suspend fun syncAllAccounts(): BatchSyncReport {
         val settings = settingsStore.readSettings()
         if (!settings.hasAnySyncableAccount()) {
@@ -178,6 +182,9 @@ class GradeRepository(
                 summary = summary,
             )
         } catch (error: Exception) {
+            if (error is kotlinx.coroutines.CancellationException) {
+                throw error
+            }
             settingsStore.saveSyncError(
                 accountId = account.id,
                 message = error.message ?: context.getString(R.string.error_oasis_sync_generic),
@@ -244,6 +251,7 @@ class GradeRepository(
                         name = remote.name,
                         gradeLabel = formatGrade(remote.grade),
                         gradePublished = remote.grade != null,
+                        changedFields = describeChanges(match, remote),
                     )
                 }
             }
@@ -254,6 +262,18 @@ class GradeRepository(
         }
 
         return ReconcileResult(persisted = persisted, changes = changes)
+    }
+
+    private fun describeChanges(old: StoredGradeEntity, new: RemoteGrade): String {
+        val parts = mutableListOf<String>()
+        val oldGrade = formatGrade(old.grade)
+        val newGrade = formatGrade(new.grade)
+        if (oldGrade != newGrade) parts += context.getString(R.string.notification_change_grade, oldGrade, newGrade)
+        if (old.averageLabel != new.averageLabel) parts += context.getString(R.string.notification_change_average, old.averageLabel, new.averageLabel)
+        if (old.rankLabel != new.rankLabel) parts += context.getString(R.string.notification_change_rank, old.rankLabel, new.rankLabel)
+        if (old.coefficientLabel != new.coefficientLabel) parts += context.getString(R.string.notification_change_coeff, old.coefficientLabel, new.coefficientLabel)
+        if (old.commentLabel != new.commentLabel) parts += context.getString(R.string.notification_change_comment)
+        return parts.joinToString(", ").ifEmpty { context.getString(R.string.notification_change_details) }
     }
 
     private fun findBestMatch(remote: RemoteGrade, candidates: List<StoredGradeEntity>): StoredGradeEntity? {

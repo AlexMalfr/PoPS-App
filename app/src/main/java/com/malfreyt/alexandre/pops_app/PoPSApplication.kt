@@ -12,7 +12,7 @@ class PoPSApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         container = AppContainer(this)
-        NotificationHelper.createChannel(this)
+        NotificationHelper.createChannel(this, container.settingsStore.readSettings())
         SyncScheduler.reschedule(this, container.settingsStore.readSettings())
     }
 }

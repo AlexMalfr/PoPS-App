@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.malfreyt.alexandre.pops_app.R
 import com.malfreyt.alexandre.pops_app.data.AppContainer
+import com.malfreyt.alexandre.pops_app.data.AccountNotificationType
 import com.malfreyt.alexandre.pops_app.data.AppSettings
 import com.malfreyt.alexandre.pops_app.data.OasisAccount
 import com.malfreyt.alexandre.pops_app.data.SemesterSnapshot
@@ -12,6 +13,8 @@ import com.malfreyt.alexandre.pops_app.data.UiGrade
 import com.malfreyt.alexandre.pops_app.data.currentAcademicYear
 import com.malfreyt.alexandre.pops_app.notifications.NotificationHelper
 import com.malfreyt.alexandre.pops_app.sync.SyncScheduler
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -33,6 +36,9 @@ enum class GradeSortMode {
     DATE,
     MODULE,
     GRADE,
+    AVERAGE,
+    RANK_POSITION,
+    RANK_PERCENTAGE,
 }
 
 data class ErrorDialogState(
@@ -55,6 +61,7 @@ data class MainUiState(
     val selectedYear: Int? = null,
     val selectedTab: OasisTab = OasisTab.EPREUVES,
     val gradeSortMode: GradeSortMode = GradeSortMode.DATE,
+    val gradeSortAscending: Boolean = false,
     val isSyncing: Boolean = false,
     val isSaving: Boolean = false,
     val isSavingAccount: Boolean = false,
@@ -73,6 +80,7 @@ class MainViewModel(
     private val context = appContainer.appContext
     private var allGrades: List<UiGrade> = emptyList()
     private var allSemesterSnapshots: List<SemesterSnapshot> = emptyList()
+    private var activeSyncJob: Job? = null
 
     private val _uiState = MutableStateFlow(
         MainUiState(
@@ -131,7 +139,16 @@ class MainViewModel(
     }
 
     fun setGradeSortMode(mode: GradeSortMode) {
-        _uiState.update { it.copy(gradeSortMode = mode) }
+        _uiState.update {
+            if (it.gradeSortMode == mode) {
+                it.copy(gradeSortAscending = !it.gradeSortAscending)
+            } else {
+                it.copy(
+                    gradeSortMode = mode,
+                    gradeSortAscending = defaultGradeSortAscending(mode),
+                )
+            }
+        }
     }
 
     fun toggleServerUrlSettings() {
@@ -145,14 +162,25 @@ class MainViewModel(
     fun updateOasisUrl(value: String) = updateDraftSettings { copy(oasisBaseUrl = value) }
     fun updateIgnoreTlsErrors(value: Boolean) = updateDraftSettings { copy(ignoreTlsErrors = value) }
     fun updatePollingMinutes(value: Int) = updateDraftSettings { copy(pollingMinutes = value) }
-    fun updateNotificationsEnabled(value: Boolean) = updateDraftSettings { copy(notificationsEnabled = value) }
-    fun updateNotifyNewGrades(value: Boolean) = updateDraftSettings { copy(notifyNewGrades = value) }
-    fun updateNotifyPendingGrades(value: Boolean) = updateDraftSettings { copy(notifyPendingGrades = value) }
-    fun updateNotifyUpdatedGrades(value: Boolean) = updateDraftSettings { copy(notifyUpdatedGrades = value) }
-    fun updateNotifyErrors(value: Boolean) = updateDraftSettings { copy(notifyErrors = value) }
+    fun updateNotificationsEnabled(value: Boolean) {
+        val account = _uiState.value.savedSettings.selectedAccountOrNull() ?: return
+        val updated = account.copy(notificationsEnabled = value)
+        repository.saveAccount(updated)
+        NotificationHelper.createChannel(appContainer.appContext, repository.readSettings())
+    }
+    fun updateNotifyNewGrades(value: Boolean) = updateSelectedAccountNotification(AccountNotificationType.NEW, value)
+    fun updateNotifyPendingGrades(value: Boolean) = updateSelectedAccountNotification(AccountNotificationType.PENDING, value)
+    fun updateNotifyUpdatedGrades(value: Boolean) = updateSelectedAccountNotification(AccountNotificationType.UPDATED, value)
+    fun updateNotifyErrors(value: Boolean) = updateSelectedAccountNotification(AccountNotificationType.ERROR, value)
 
     fun selectAccount(accountId: String) {
         repository.selectAccount(accountId)
+    }
+
+    fun completeOnboarding() {
+        val current = repository.readSettings()
+        repository.saveSettings(current.copy(onboardingCompleted = true))
+        _uiState.update { it.copy(errorDialog = null) }
     }
 
     fun saveAccount(existingAccountId: String?, login: String, password: String) {
@@ -160,6 +188,7 @@ class MainViewModel(
             _uiState.update { it.copy(isSavingAccount = true, errorDialog = null) }
             try {
                 val account = repository.upsertAccount(existingAccountId, login, password)
+                NotificationHelper.createChannel(appContainer.appContext, repository.readSettings())
                 SyncScheduler.reschedule(appContainer.appContext, repository.readSettings())
                 enqueueSnackbar(
                     if (existingAccountId == null) {
@@ -193,6 +222,7 @@ class MainViewModel(
         val selectedAccount = _uiState.value.savedSettings.selectedAccountOrNull() ?: return
         viewModelScope.launch {
             repository.removeAccount(selectedAccount.id)
+            NotificationHelper.createChannel(appContainer.appContext, repository.readSettings())
             NotificationHelper.clearSyncFailureNotification(appContainer.appContext, selectedAccount.id)
             SyncScheduler.reschedule(appContainer.appContext, repository.readSettings())
             enqueueSnackbar(context.getString(R.string.account_removed, selectedAccount.resolvedDisplayName()))
@@ -221,6 +251,7 @@ class MainViewModel(
                     repository.testConnection(candidate, account.login, account.password)
                 }
                 repository.saveSettings(candidate)
+                NotificationHelper.createChannel(appContainer.appContext, repository.readSettings())
                 SyncScheduler.reschedule(appContainer.appContext, repository.readSettings())
                 enqueueSnackbar(context.getString(R.string.settings_saved))
                 _uiState.update {
@@ -245,6 +276,22 @@ class MainViewModel(
     }
 
     fun refresh() {
+        startSync(clearCacheFirst = false)
+    }
+
+    fun hardRefresh() {
+        startSync(clearCacheFirst = true)
+    }
+
+    fun stopSync() {
+        repository.cancelActiveSync()
+        activeSyncJob?.cancel(CancellationException("Sync cancelled by user"))
+        activeSyncJob = null
+        _uiState.update { it.copy(isSyncing = false, errorDialog = null) }
+        enqueueSnackbar(context.getString(R.string.sync_cancelled))
+    }
+
+    private fun startSync(clearCacheFirst: Boolean) {
         val settings = _uiState.value.savedSettings
         if (!settings.selectedAccountCanSync()) {
             _uiState.update { it.copy(destination = MainDestination.SETTINGS) }
@@ -252,21 +299,23 @@ class MainViewModel(
             return
         }
 
-        viewModelScope.launch {
+        activeSyncJob?.cancel()
+        activeSyncJob = viewModelScope.launch {
             _uiState.update { it.copy(isSyncing = true, errorDialog = null) }
             try {
+                if (clearCacheFirst) {
+                    repository.clearSelectedAccountCache()
+                }
                 val report = repository.syncSelectedAccount()
                 SyncScheduler.reschedule(appContainer.appContext, repository.readSettings())
-                if (repository.readSettings().notificationsEnabled) {
-                    NotificationHelper.notifyChanges(appContainer.appContext, repository.readSettings(), report.changes)
-                }
+                NotificationHelper.notifyChanges(appContainer.appContext, repository.readSettings(), report.changes)
                 NotificationHelper.clearSyncFailureNotification(appContainer.appContext, report.accountId)
                 enqueueSnackbar(report.summary)
-                _uiState.update { it.copy(isSyncing = false) }
+            } catch (error: CancellationException) {
+                return@launch
             } catch (error: Exception) {
                 _uiState.update {
                     it.copy(
-                        isSyncing = false,
                         errorDialog = ErrorDialogState(
                             title = context.getString(R.string.error_sync_title),
                             message = error.message ?: context.getString(R.string.error_sync_message),
@@ -274,39 +323,15 @@ class MainViewModel(
                         ),
                     )
                 }
+            } finally {
+                activeSyncJob = null
+                _uiState.update { it.copy(isSyncing = false) }
             }
         }
     }
 
-    fun hardRefresh() {
-        val settings = _uiState.value.savedSettings
-        if (!settings.selectedAccountCanSync()) {
-            _uiState.update { it.copy(destination = MainDestination.SETTINGS) }
-            enqueueSnackbar(context.getString(R.string.settings_configure_before_sync))
-            return
-        }
-
-        viewModelScope.launch {
-            _uiState.update { it.copy(isSyncing = true, errorDialog = null) }
-            try {
-                repository.clearSelectedAccountCache()
-                val report = repository.syncSelectedAccount()
-                SyncScheduler.reschedule(appContainer.appContext, repository.readSettings())
-                enqueueSnackbar(report.summary)
-                _uiState.update { it.copy(isSyncing = false) }
-            } catch (error: Exception) {
-                _uiState.update {
-                    it.copy(
-                        isSyncing = false,
-                        errorDialog = ErrorDialogState(
-                            title = context.getString(R.string.error_sync_title),
-                            message = error.message ?: context.getString(R.string.error_sync_message),
-                            technicalDetails = error.toTechnicalDetails(),
-                        ),
-                    )
-                }
-            }
-        }
+    fun showErrorDialog(dialog: ErrorDialogState) {
+        _uiState.update { it.copy(errorDialog = dialog) }
     }
 
     fun dismissErrorDialog() {
@@ -375,6 +400,29 @@ class MainViewModel(
                     append(it)
                 }
             }
+        }
+    }
+
+    private fun updateSelectedAccountNotification(type: AccountNotificationType, enabled: Boolean) {
+        val account = _uiState.value.savedSettings.selectedAccountOrNull() ?: return
+        val updated = when (type) {
+            AccountNotificationType.NEW -> account.copy(notifyNewGrades = enabled)
+            AccountNotificationType.PENDING -> account.copy(notifyPendingGrades = enabled)
+            AccountNotificationType.UPDATED -> account.copy(notifyUpdatedGrades = enabled)
+            AccountNotificationType.ERROR -> account.copy(notifyErrors = enabled)
+        }
+        repository.saveAccount(updated)
+        NotificationHelper.createChannel(appContainer.appContext, repository.readSettings())
+    }
+
+    private fun defaultGradeSortAscending(mode: GradeSortMode): Boolean {
+        return when (mode) {
+            GradeSortMode.DATE -> false
+            GradeSortMode.MODULE -> true
+            GradeSortMode.GRADE -> false
+            GradeSortMode.AVERAGE -> false
+            GradeSortMode.RANK_POSITION -> true
+            GradeSortMode.RANK_PERCENTAGE -> true
         }
     }
 }

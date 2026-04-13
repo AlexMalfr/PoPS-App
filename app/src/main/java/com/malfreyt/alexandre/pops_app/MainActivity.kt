@@ -13,14 +13,22 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.malfreyt.alexandre.pops_app.ui.BatteryOptimizationDialog
 import com.malfreyt.alexandre.pops_app.ui.MainDestination
 import com.malfreyt.alexandre.pops_app.ui.MainScreen
 import com.malfreyt.alexandre.pops_app.ui.MainViewModel
 import com.malfreyt.alexandre.pops_app.ui.MainViewModelFactory
+import com.malfreyt.alexandre.pops_app.ui.OnboardingScreen
+import com.malfreyt.alexandre.pops_app.ui.isBatteryOptimizationIgnored
 import com.malfreyt.alexandre.pops_app.ui.theme.PoPSTheme
 
 class MainActivity : ComponentActivity() {
@@ -36,41 +44,48 @@ class MainActivity : ComponentActivity() {
             val app = application as PoPSApplication
             val factory = remember(app.container) { MainViewModelFactory(app.container) }
             val viewModel: MainViewModel = viewModel(factory = factory)
+            val state by viewModel.uiState.collectAsState()
             val openNotificationPreferences = remember(intent) {
                 intent?.categories?.contains(Notification.INTENT_CATEGORY_NOTIFICATION_PREFERENCES) == true
             }
 
             PoPSTheme {
-                NotificationPermissionEffect()
-                LaunchedEffect(openNotificationPreferences) {
-                    if (openNotificationPreferences) {
-                        viewModel.navigate(MainDestination.SETTINGS)
+                if (!state.savedSettings.onboardingCompleted) {
+                    OnboardingScreen(
+                        viewModel = viewModel,
+                        state = state,
+                        onComplete = { viewModel.completeOnboarding() },
+                    )
+                } else {
+                    LaunchedEffect(openNotificationPreferences) {
+                        if (openNotificationPreferences) {
+                            viewModel.navigate(MainDestination.SETTINGS)
+                        }
                     }
+
+                    BatteryOptimizationEffect(
+                        backgroundSyncEnabled = state.savedSettings.pollingMinutes > 0 && state.savedSettings.hasAnySyncableAccount(),
+                    )
+
+                    MainScreen(viewModel = viewModel)
                 }
-                MainScreen(viewModel = viewModel)
             }
         }
     }
 }
 
 @Composable
-private fun NotificationPermissionEffect() {
-    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
-        return
+private fun BatteryOptimizationEffect(backgroundSyncEnabled: Boolean) {
+    val context = LocalContext.current
+    var showDialog by rememberSaveable { mutableStateOf(false) }
+
+    LaunchedEffect(backgroundSyncEnabled) {
+        if (backgroundSyncEnabled && !isBatteryOptimizationIgnored(context)) {
+            showDialog = true
+        }
     }
 
-    val context = LocalContext.current
-    val launcher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission()
-    ) { }
-
-    LaunchedEffect(Unit) {
-        if (ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.POST_NOTIFICATIONS
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
-        }
+    if (showDialog) {
+        BatteryOptimizationDialog(onDismiss = { showDialog = false })
     }
 }

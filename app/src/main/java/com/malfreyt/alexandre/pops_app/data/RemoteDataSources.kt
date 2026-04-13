@@ -6,9 +6,11 @@ import android.content.Context
 import android.util.Log
 import com.malfreyt.alexandre.pops_app.R
 import java.io.IOException
+import java.util.Collections
 import okhttp3.FormBody
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.JavaNetCookieJar
+import okhttp3.Call
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
@@ -27,11 +29,16 @@ import javax.net.ssl.SSLContext
 import javax.net.ssl.TrustManager
 import javax.net.ssl.X509TrustManager
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 
 class OasisRemoteDataSource(
     private val context: Context,
 ) {
+    private val activeCalls = Collections.synchronizedSet(mutableSetOf<Call>())
+
     suspend fun fetchSemesters(settings: AppSettings, account: OasisAccount): List<RemoteSemesterData> {
         return withContext(Dispatchers.IO) {
             requireInternetConnection()
@@ -43,7 +50,9 @@ class OasisRemoteDataSource(
             val semesters = mutableListOf<RemoteSemesterData>()
 
             for (academicYear in currentAcademicYear() downTo currentAcademicYear() - 10) {
+                currentCoroutineContext().ensureActive()
                 for (semester in listOf(1, 2)) {
+                    currentCoroutineContext().ensureActive()
                     val semesterData = fetchSemester(client, baseUrl, account.resolvedStudentId(), academicYear, semester)
                     if (semesterData.hasContent()) {
                         semesters += semesterData
@@ -75,18 +84,20 @@ class OasisRemoteDataSource(
             login(client, baseUrl, login, password)
 
             val displayName = runCatching {
-                client.newCall(
+                executeTracked(
+                    client.newCall(
                     Request.Builder()
                         .url(baseUrl.toHttpUrl())
                         .get()
                         .build()
-                ).execute().use { response ->
+                    )
+                ) { call -> call.execute().use { response ->
                     if (!response.isSuccessful) {
                         return@use studentId
                     }
                     val document = Jsoup.parse(response.body?.string().orEmpty())
                     document.selectFirst("span.username")?.text()?.trim().orEmpty().ifBlank { studentId }
-                }
+                } }
             }.getOrElse {
                 studentId
             }
@@ -104,11 +115,11 @@ class OasisRemoteDataSource(
         val loginUrl = (baseUrl + LOGIN_PATH).toHttpUrl()
         Log.d(TAG, "Opening Oasis session on $loginUrl")
         try {
-            client.newCall(Request.Builder().url(loginUrl).get().build()).execute().use { response ->
+            executeTracked(client.newCall(Request.Builder().url(loginUrl).get().build())) { call -> call.execute().use { response ->
                 if (!response.isSuccessful) {
                     throw IllegalStateException(context.getString(R.string.error_oasis_session_init))
                 }
-            }
+            } }
 
             val requestBody = FormBody.Builder()
                 .add("login", login)
@@ -116,12 +127,12 @@ class OasisRemoteDataSource(
                 .add("url", "codepage=MYMARKS")
                 .build()
 
-            client.newCall(
+            executeTracked(client.newCall(
                 Request.Builder()
                     .url(loginUrl)
                     .post(requestBody)
                     .build()
-            ).execute().use { response ->
+            )) { call -> call.execute().use { response ->
                 val body = response.body?.string().orEmpty()
                 if (!response.isSuccessful) {
                     throw IllegalStateException(context.getString(R.string.error_oasis_auth_impossible))
@@ -131,7 +142,7 @@ class OasisRemoteDataSource(
                     throw IllegalStateException(json.optString("text", context.getString(R.string.error_oasis_auth_denied)))
                 }
                 Log.d(TAG, "Oasis authentication succeeded")
-            }
+            } }
         } catch (error: IOException) {
             throw mapNetworkException(error)
         }
@@ -152,12 +163,12 @@ class OasisRemoteDataSource(
             .build()
 
         try {
-            client.newCall(
+            executeTracked(client.newCall(
                 Request.Builder()
                     .url((baseUrl + RELOAD_SEMESTER_PATH).toHttpUrl())
                     .post(requestBody)
                     .build()
-            ).execute().use { response ->
+            )) { call -> call.execute().use { response ->
                 if (!response.isSuccessful) {
                     Log.w(TAG, "Semester fetch failed for year=$academicYear semester=$semester with code=${response.code}")
                     return RemoteSemesterData(
@@ -171,10 +182,16 @@ class OasisRemoteDataSource(
                 val html = response.body?.string().orEmpty()
                 Log.d(TAG, "Fetched year=$academicYear semester=$semester, ${html.length} chars")
                 return parseSemesterHtml(html, academicYear, semester)
-            }
+            } }
         } catch (error: IOException) {
             throw mapNetworkException(error)
         }
+    }
+
+    fun cancelOngoingRequests() {
+        synchronized(activeCalls) {
+            activeCalls.toList()
+        }.forEach(Call::cancel)
     }
 
     private fun requireInternetConnection() {
@@ -190,7 +207,10 @@ class OasisRemoteDataSource(
         return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
     }
 
-    private fun mapNetworkException(error: IOException): IllegalStateException {
+    private fun mapNetworkException(error: IOException): Exception {
+        if (error.message?.contains("canceled", ignoreCase = true) == true) {
+            return CancellationException("Sync cancelled", error)
+        }
         if (error is UnknownHostException || error is ConnectException || error is SocketTimeoutException || !hasInternetConnection()) {
             return NoInternetConnectionException(context.getString(R.string.error_no_internet), error)
         }
@@ -254,18 +274,27 @@ class OasisRemoteDataSource(
     private fun fetchProfilePhotoBytes(client: OkHttpClient, baseUrl: String, studentId: String): ByteArray? {
         val photoUrl = buildPhotoUrl(baseUrl, studentId)
         return runCatching {
-            client.newCall(
+            executeTracked(client.newCall(
                 Request.Builder()
                     .url(photoUrl.toHttpUrl())
                     .get()
                     .build()
-            ).execute().use { response ->
+            )) { call -> call.execute().use { response ->
                 if (!response.isSuccessful) {
                     return@use null
                 }
                 response.body?.bytes()?.takeIf { it.isNotEmpty() }
-            }
+            } }
         }.getOrNull()
+    }
+
+    private inline fun <T> executeTracked(call: Call, block: (Call) -> T): T {
+        activeCalls += call
+        return try {
+            block(call)
+        } finally {
+            activeCalls -= call
+        }
     }
 
     private fun parseModuleRows(document: org.jsoup.nodes.Document, academicYear: Int, semester: Int): List<ModuleSummary> {

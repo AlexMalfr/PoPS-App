@@ -20,6 +20,11 @@ data class OasisAccount(
     val studentId: String = "",
     val displayName: String = "",
     val profilePhotoUrl: String? = null,
+    val notificationsEnabled: Boolean = true,
+    val notifyNewGrades: Boolean = true,
+    val notifyPendingGrades: Boolean = true,
+    val notifyUpdatedGrades: Boolean = true,
+    val notifyErrors: Boolean = true,
     val lastSyncAt: Long? = null,
     val lastSyncSummary: String? = null,
     val lastSyncError: String? = null,
@@ -39,6 +44,23 @@ data class OasisAccount(
     fun resolvedDisplayName(): String {
         return displayName.ifBlank { resolvedStudentId() }
     }
+
+    fun isNotificationEnabled(type: AccountNotificationType): Boolean {
+        if (!notificationsEnabled) return false
+        return when (type) {
+            AccountNotificationType.NEW -> notifyNewGrades
+            AccountNotificationType.PENDING -> notifyPendingGrades
+            AccountNotificationType.UPDATED -> notifyUpdatedGrades
+            AccountNotificationType.ERROR -> notifyErrors
+        }
+    }
+}
+
+enum class AccountNotificationType {
+    NEW,
+    PENDING,
+    UPDATED,
+    ERROR,
 }
 
 data class AppSettings(
@@ -52,6 +74,7 @@ data class AppSettings(
     val notifyErrors: Boolean = true,
     val pollingMinutes: Int = 30,
     val ignoreTlsErrors: Boolean = false,
+    val onboardingCompleted: Boolean = false,
 ) {
     fun hasAccounts(): Boolean {
         return accounts.isNotEmpty()
@@ -63,6 +86,11 @@ data class AppSettings(
 
     fun selectedAccountCanSync(): Boolean {
         return selectedAccountOrNull()?.hasCredentials() == true && oasisBaseUrl.isNotBlank()
+    }
+
+    fun selectedAccountNotificationEnabled(type: AccountNotificationType): Boolean {
+        val account = selectedAccountOrNull() ?: return false
+        return account.isNotificationEnabled(type)
     }
 
     fun hasAnySyncableAccount(): Boolean {
@@ -200,6 +228,7 @@ data class SyncChange(
     val name: String,
     val gradeLabel: String,
     val gradePublished: Boolean,
+    val changedFields: String? = null,
 )
 
 data class SyncReport(

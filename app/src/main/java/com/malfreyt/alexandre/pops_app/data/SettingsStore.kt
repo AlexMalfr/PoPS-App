@@ -207,7 +207,12 @@ class SettingsStore(context: Context) {
         val jsonText = preferences.getString(KEY_SETTINGS_JSON, null) ?: return AppSettings()
         val json = runCatching { JSONObject(jsonText) }.getOrElse { return AppSettings() }
         return AppSettings(
-            accounts = json.optJSONArray("accounts").toAccounts(),
+            accounts = json.optJSONArray("accounts").toAccounts(
+                defaultNotifyNewGrades = json.optBoolean("notifyNewGrades", true),
+                defaultNotifyPendingGrades = json.optBoolean("notifyPendingGrades", true),
+                defaultNotifyUpdatedGrades = json.optBoolean("notifyUpdatedGrades", true),
+                defaultNotifyErrors = json.optBoolean("notifyErrors", true),
+            ),
             selectedAccountId = json.optString("selectedAccountId").takeIf { it.isNotBlank() },
             oasisBaseUrl = json.optString("oasisBaseUrl", DEFAULT_OASIS_BASE_URL).ifBlank { DEFAULT_OASIS_BASE_URL },
             notificationsEnabled = json.optBoolean("notificationsEnabled", true),
@@ -217,6 +222,7 @@ class SettingsStore(context: Context) {
             notifyErrors = json.optBoolean("notifyErrors", true),
             pollingMinutes = json.optInt("pollingMinutes", 30),
             ignoreTlsErrors = json.optBoolean("ignoreTlsErrors", false),
+            onboardingCompleted = json.optBoolean("onboardingCompleted", false),
         ).normalized()
     }
 
@@ -258,6 +264,7 @@ private fun AppSettings.toJson(): JSONObject {
         .put("notifyErrors", notifyErrors)
         .put("pollingMinutes", pollingMinutes)
         .put("ignoreTlsErrors", ignoreTlsErrors)
+        .put("onboardingCompleted", onboardingCompleted)
 }
 
 private fun OasisAccount.toJson(): JSONObject {
@@ -268,6 +275,11 @@ private fun OasisAccount.toJson(): JSONObject {
         .put("studentId", resolvedStudentId())
         .put("displayName", displayName)
         .put("profilePhotoUrl", profilePhotoUrl)
+        .put("notificationsEnabled", notificationsEnabled)
+        .put("notifyNewGrades", notifyNewGrades)
+        .put("notifyPendingGrades", notifyPendingGrades)
+        .put("notifyUpdatedGrades", notifyUpdatedGrades)
+        .put("notifyErrors", notifyErrors)
         .put("lastSyncAt", lastSyncAt)
         .put("lastSyncSummary", lastSyncSummary)
         .put("lastSyncError", lastSyncError)
@@ -277,7 +289,12 @@ private fun OasisAccount.toJson(): JSONObject {
         .put("failureNotificationActive", failureNotificationActive)
 }
 
-private fun JSONArray?.toAccounts(): List<OasisAccount> {
+private fun JSONArray?.toAccounts(
+    defaultNotifyNewGrades: Boolean,
+    defaultNotifyPendingGrades: Boolean,
+    defaultNotifyUpdatedGrades: Boolean,
+    defaultNotifyErrors: Boolean,
+): List<OasisAccount> {
     if (this == null) {
         return emptyList()
     }
@@ -292,6 +309,11 @@ private fun JSONArray?.toAccounts(): List<OasisAccount> {
                     studentId = item.optString("studentId"),
                     displayName = item.optString("displayName"),
                     profilePhotoUrl = item.optString("profilePhotoUrl").takeIf { it.isNotBlank() },
+                    notificationsEnabled = item.optBoolean("notificationsEnabled", true),
+                    notifyNewGrades = item.optBoolean("notifyNewGrades", defaultNotifyNewGrades),
+                    notifyPendingGrades = item.optBoolean("notifyPendingGrades", defaultNotifyPendingGrades),
+                    notifyUpdatedGrades = item.optBoolean("notifyUpdatedGrades", defaultNotifyUpdatedGrades),
+                    notifyErrors = item.optBoolean("notifyErrors", defaultNotifyErrors),
                     lastSyncAt = item.optLong("lastSyncAt", 0L).takeIf { it > 0L },
                     lastSyncSummary = item.optString("lastSyncSummary").takeIf { it.isNotBlank() },
                     lastSyncError = item.optString("lastSyncError").takeIf { it.isNotBlank() },

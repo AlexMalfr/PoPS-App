@@ -15,8 +15,8 @@
 
 ## Syncing
 - [ ] Fix background sync issues
-  - [ ] Maybe ask the user for permission to ignore battery optimizations? (Show a dialog on app launch if the permission is not granted, with a button to open the system settings for battery optimizations, and a link to http://dontkillmyapp.com/ to explain why it's important to grant this permission)
-    - [ ] Only when background sync is enabled in the app settings, but at every app launch until the permission is granted
+  - [x] Maybe ask the user for permission to ignore battery optimizations? (Show a dialog on app launch if the permission is not granted, with a button to open the system settings for battery optimizations, and a link to http://dontkillmyapp.com/ to explain why it's important to grant this permission)
+    - [x] Only when background sync is enabled in the app settings, but at every app launch until the permission is granted
   - [x] Don't show an error notification for no internet connection, just skip the sync and wait for the next one
 
 ---
@@ -27,7 +27,9 @@
     - [ ] Pre-fill device info and attach redacted logs to the issue report email
   - [x] Add a "Show GitHub repo" button (or other phrasing) that opens the GitHub repository in the browser to encourage users to check it out and maybe contribute or report issues
   - [x] ⇒ Kebab menu should always be the last item of the top bar
-- [ ] Add a first-run / onboarding flow (notifications, background sync limitations, unofficial app disclaimer, data handling disclaimer, etc.)
+- [x] Add a first-run / onboarding flow (unofficial app disclaimer, data handling disclaimer, notifications permission, background sync limitations + battery optimization permission, etc.)
+  - [ ] Add the "forgot password" feature
+  - [ ] fix: to get the first name, get it from the STUDENT page instead of cutting the full name arount the first space
 
 ---
 
@@ -45,21 +47,24 @@
 
 ### Top bar
 - [x] Show the date of the last successful sync in the top bar instead of the number of notes found
-  - [ ] Make the string way more compact since there isn't a lot of space
-  - [ ] Show the error status here too in red if the last sync failed, with a popup that opens when clicking on it with error details
+  - [x] Make the string way more compact since there isn't a lot of space
+  - [x] Show the error status here too in red if the last sync failed, with a popup that opens when clicking on it with error details
 - [x] Add a search bar/button with filter options
-  - [ ] move the search bar to the top bar instead of the content, and remove the "All/Name/Code" filters, and remove the "search in current tab" string since this is obvious
-  - [ ] collapse the search bar if it's empty and not in focus anymore to save space, and show it again when clicking on the search icon
-  - [ ] search terms entered in the search bar should only be linked to the tab it was entered on, so if the user switches tab it should clear the search bar (or put the value saved for the tab) and it should be shown again when the user comes back to the tab (only saved in memory, no need to save it in the local storage)
-- [ ] Add a kebab menu with advanced features:
+  - [x] move the search bar to the top bar instead of the content, and remove the "All/Name/Code" filters, and remove the "search in current tab" string since this is obvious
+  - [x] search terms entered in the search bar should only be linked to the tab it was entered on, so if the user switches tab it should clear the search bar (or put the value saved for the tab) and it should be shown again when the user comes back to the tab (only saved in memory, no need to save it in the local storage)
+  - [x] close the search bar if it loses focus AND is empty to save space, or when clicking on the search icon or the "X" in the search bar
+  - [x] Make the search bar smaller and round
+- [x] Add a kebab menu with advanced features:
   - [x] Add an "Open in browser" button that opens the corresponding page on the web interface or for missing features
   - [x] Add an "Export" button in the kebab menu
-  - [ ] Wire the export action so it actually exports data
+    - [ ] Wire the export action so it actually exports data
+  - [x] Add a sync and a hard refresh buttons
+    - [x] Add a "stop sync" when a sync in in progress (that replaces both buttons)
 
 ### "Epreuves" tab
 - [x] Make cards more compact
   - [x] Make cards foldable with a "Show details" button to show more details without cluttering the UI
-  - [ ] only show the "Show details" button if there are actually more details to show that don't fit on the card, and hide it otherwise to avoid cluttering the UI with useless buttons
+  - [x] only show the "Show details" button if there are actually more details to show that don't fit on the card, and hide it otherwise to avoid cluttering the UI with useless buttons
 - [ ] Add missing info on the grade cards:
   - [x] Promotion average ("Moy. Promo")
   - [x] Rank ("Rang")
@@ -69,8 +74,11 @@
   - [ ] Extra info if any available in the API
 - [ ] Feature to sort/group grades (under the top bar):
   - [x] By default it's sorted by date of publication with the most recent first
-  - [ ] On the web interface it seems to be sorted by module id, which is not very useful, but allows to easily see which grades belong to the same module, so maybe add an option to group grades by module with a separator between modules
+  - [x] On the web interface it seems to be sorted by module id, which is not very useful, but allows to easily see which grades belong to the same module, so maybe add an option to group grades by module with a separator between modules
+    - [x] When filtered by module, show the module name and id at the top of each group (like the "Modules" tab)
   - [ ] Make it so we can sort by any field available (make sure it sorts the numbers correctly and not like strings)
+    - [x] Add rank and promo avg
+    - [x] Clicking a 2nd time on a sort method should reverse the sort (show next to the selected sort method the current sort order with an arrow)
 - [x] Show new grades with a "NEW" badge and an more vibrant bg/outline color, and at the top of the list, separated from the rest with a separator, until the user opens the app or refreshes the list
   - [x] This effect should NOT apply when syncing for the very first time, as the grades that will appear are not "new" but rather the current state that we just dumped
 
@@ -84,7 +92,7 @@
   - [ ] Infos related to retakes if any
 - [x] Group by UEs, and show the UE name at the top of each group, like on the web interface, instead of showing the module name and id on each card
 - [x] No need for sorting since it's already grouped by UEs
-- [ ] When clicking on a module, move to the "Epreuves" tab with a filter for the corresponding module
+- [x] When clicking on a module, move to the "Epreuves" tab with a search on the name of the module
 
 ### "UEs" tab
 - [x] Make cards more compact
@@ -106,7 +114,10 @@
   - [x] Instead of just having "login" and "password" fields always showing in the settings, have a more user-friendly "Add an account" flow
     - [x] Add an "edit account" action for selected account
     - [x] Add a "remove account / log out" action for selected account
-      - [ ] fix: the red "log out" btn is way too long vertically for some reason
+      - [x] fix: the red "log out" btn is way too long vertically for some reason
+    - [ ] Add the "forgot password" feature
+    - [ ] Fix the password manager interaction with the system so it can suggest to the user to use the saved password for the actual oasis website
+      - [ ] Currently the password manager opens to *save* the entered password, but doesn't offer it later when logging in again
   - [x] Make an "error" state when the last fetch for an account failed (except no internet error), with a "retry" button that only retries that account
   - [x] Explain that the login info is stored locally and encrypted, and that it's only used to fetch data from Oasis and never shared with anyone, not even the developer, and that the user can remove it at any time by deleting their account in the app or uninstalling the app
     - [x] During the login flow
@@ -114,14 +125,18 @@
 
 ### Notification settings section
   - [x] Add options to configure which notifications the user wants to receive (new grades, updated grades, sync errors, etc.)
-  - [ ] Make it per account if multiple accounts are added
-  - [ ] Add an "open system notification settings" shortcut and make it clear it's where the user can configure the notification channels and categories in more detail (choose the importance, sound, vibration, etc. for each type of notification)
+  - [x] Make notifications settings saved per account
+    - [x] Make it clear in the settings UI
+  - [x] Add a "notification preview" feature that sends an example notification for each type of notification to show the user how they look and what info they contain
+    - [x] Use real data from the user's account in the preview notification (even if it doesn't really correspond to the actual state of the grade used)
+    - [x] Make it clear in the notifs that they are example notifs
+  - [x] Add an "open system notification settings" shortcut and make it clear it's where the user can configure the notification channels and categories in more detail (choose the importance, sound, vibration, etc. for each type of notification)
   - [x] NO notification should be send the very first time the app syncs and fetches the existing grades, because they are not "new" for the user, they are just the current state that we just dumped, so only show notifications for new/updated grades from the second sync and on
 
 ### Sync settings section
   - [x] Add options to configure the sync frequency (manual, every 15m, every 30m, every 1h, every 6h, every 12h, every 1d, every 1w)
   - [x] Separate "Background sync" toggle from "Sync frequency" options, because it may not be clear that you have to slide the frequency all the way to "manual" to disable background sync
-  - [ ] Add conditions (only on Wi-Fi, only when charging, etc.)
+  - [ ] Add conditions (only on Wi-Fi or with unmetered connection, only when charging, etc.) off by default (i.e. allow sync on all networks)
   - [ ] Make it per account if multiple accounts are added
   - [ ] Advanced: Add a "clear cached data" action
 
@@ -129,14 +144,14 @@
   - [x] links to the GitHub repo, support email (to:alexandre.malfreyt+popsapp@universite-paris-saclay.fr cc:alexandre.malfreyt+popsapp@gmail.com)
   - [ ] explains that the app is unofficial, not affiliated with the school, made by a student, and 100% vibe coded, and that they are welcome to contribute, report issues etc.
   - [ ] Make sure exported logs / issue reports redact credentials, cookies, names, addresses, and other personal data by default (how? maybe mark with a certain syntax the parts of logs that contain personal data to be able to redact them easily when attached to an issue report or shared with support)
-  - [ ] Add a small diagnostics section (app version, last sync time, selected sync mode, mock/prod URL)
+  - [x] Add a small diagnostics section (app version, last sync time, selected sync mode, mock/prod URL)
+    - [ ] fix: The app version shown in the app is not the same as the real app version
 
 ---
 
 ## Notifications
 - [x] Add more granular notification types (new grade, updated grade, sync error, etc.) and let the user choose which ones they want to receive in the settings
-- [ ] Make notifications per account if multiple accounts are added (i.e. show the notifications categories per account in the OS notification settings)
-  - [ ] Show the account name ONLY if multiple accounts are added
+- [x] Make notifications per account if multiple accounts are added (i.e. show the notifications categories per account in the OS notification settings)
 
 ---
 
@@ -148,10 +163,11 @@
 
 ## Features to add (later)
 - [ ] Add other Oasis features:
-  - [ ] "Mes informations personnelles" (My personal information): basic info about the student such as name, email, phone number, address, emergency contact, photo, and special needs if any
+  - [ ] "Mes informations personnelles" (My personal information, codepage=STUDENT): basic info about the student such as name, email, phone number, address, emergency contact, photo, and special needs if any
     - [ ] Read-only? Or allow the user to edit and save changes to Oasis?
-  - [ ] "Mon cursus" (My curriculum): info about the student's curriculum, such as the final result, accumulated score for each type of requirement (citizenship/quitus/"polypoints", mobility, school/company presence for APP students, language requirements, etc.), jury decisions, comments, etc.
-  - [ ] "Mes Choix" (My choices): Mainly useless page because all students attend the same courses except in rare cases like "UE initiative" (which is a mandatory UE where the student is free to choose any course they want)
-  - [ ] "Mes documents" (My documents): list of documents uploaded by the student or the administration, such as the CV, cover letter, internship report, grades certificate, etc.
+  - [ ] "Mon cursus" (My curriculum, codepage=MYCURSUS): info about the student's curriculum, such as the final result, accumulated score for each type of requirement (citizenship/quitus/"polypoints", mobility, school/company presence for APP students, language requirements, etc.), jury decisions, comments, etc.
+  - [x] "Mes notes" (My grades, codepage=MYMARKS): list of all the student's grades, with the ability to filter and sort them, and see details for each grade
+  - [ ] "Mes Choix" (My choices, codepage=MYCHOICES): Mainly useless page because all students attend the same courses except in rare cases like "UE initiative" (which is a mandatory UE where the student is free to choose any course they want)
+  - [ ] "Mes documents" (My documents, codepage=MYDOCUMENTS): list of documents uploaded by the student or the administration, such as the CV, cover letter, internship report, grades certificate, etc.
 - [ ] Add the timetable (from ADE)
 - [ ] Add the Moodle/e-campus features

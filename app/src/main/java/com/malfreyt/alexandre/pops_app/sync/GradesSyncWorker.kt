@@ -27,9 +27,7 @@ class GradesSyncWorker(
                     NotificationHelper.clearSyncFailureNotification(applicationContext, accountId)
                 }
 
-            if (settings.notificationsEnabled) {
-                NotificationHelper.notifyChanges(applicationContext, settings, report.changes)
-            }
+            NotificationHelper.notifyChanges(applicationContext, settings, report.changes)
 
             val blockingFailures = report.failures.filterNot { it.isNoInternet }
             if (blockingFailures.isEmpty()) {
@@ -43,9 +41,10 @@ class GradesSyncWorker(
                     technicalDetails = failure.technicalDetails,
                 )
                 val account = container.settingsStore.readSettings().accounts.firstOrNull { it.id == failure.accountId } ?: return@forEach
-                if (settings.notificationsEnabled && settings.notifyErrors) {
+                if (account.notificationsEnabled && account.notifyErrors) {
                     NotificationHelper.notifySyncFailure(
                         context = applicationContext,
+                        settings = settings,
                         account = account,
                         attempts = failureState.attempts,
                         errorMessage = failureState.shortMessage,
