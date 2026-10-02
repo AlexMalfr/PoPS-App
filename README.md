@@ -54,6 +54,8 @@ Des modifications locales du code ajoutent `-dirty.<empreinte>` : deux états lo
 4. Choisis la fréquence de vérification et l'état des notifications.
 5. Ouvre `URL du serveur` pour changer l’instance, ou `Synchro > Avancé` pour les conditions réseau/charge et les erreurs TLS.
 
+Les sections des réglages utilisent les mêmes marges et des séparateurs espacés entre les groupes de commandes.
+
 Tous les réglages sont enregistrés automatiquement. L’URL est enregistrée après une courte pause de saisie ; une URL invalide ne remplace pas le serveur enregistré et un champ vide utilise l’instance par défaut.
 
 Les réglages restent modifiables sans connexion à Oasis. La fréquence de synchro, les conditions réseau/charge et les notifications sont propres au compte sélectionné. Désactiver les erreurs de synchro, toutes les notifications du compte ou sa synchro en arrière-plan efface l’alerte d’erreur en cours. L’ajout ou la modification des identifiants nécessite toujours une authentification réussie. Un refus conserve les identifiants précédents et rappelle qu’un compte non activé ou une fermeture temporaire d’Oasis peut aussi bloquer la connexion.

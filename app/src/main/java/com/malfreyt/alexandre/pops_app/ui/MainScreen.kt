@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -1272,7 +1273,7 @@ internal fun SettingsPage(
     LazyColumn(
         modifier = Modifier.fillMaxSize().testTag("settings_list"),
         contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         item { AccountSettingsCard(state = state, viewModel = viewModel) }
         // Each account owns its controls' remembered animation and gesture state.
@@ -1358,7 +1359,7 @@ private fun AccountSettingsCard(
     }
 
     Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Text(stringResource(R.string.settings_section_account), style = MaterialTheme.typography.titleLarge)
 
             if (selectedAccount == null) {
@@ -1422,7 +1423,7 @@ private fun AccountSettingsCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
-            HorizontalDivider()
+            SettingsDivider()
 
             ServerUrlSection(state = state, viewModel = viewModel)
         }
@@ -1610,7 +1611,7 @@ private fun SyncSettingsCard(
     val bgSyncEnabled = account?.canSyncInBackground() == true
 
     Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Text(stringResource(R.string.settings_section_sync), style = MaterialTheme.typography.titleLarge)
 
             if (account == null) {
@@ -1628,8 +1629,9 @@ private fun SyncSettingsCard(
                     PollingSlider(current = account.pollingMinutes, onChange = viewModel::updatePollingMinutes)
                 }
             }
+            SettingsDivider()
             Row(
-                modifier = Modifier.fillMaxWidth().clickable(onClick = viewModel::toggleAdvancedSettings),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(onClick = viewModel::toggleAdvancedSettings),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -1695,7 +1697,7 @@ private fun NotificationSettingsCard(
         .flatMap { it.modules }
 
     Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Text(stringResource(R.string.settings_section_notifications), style = MaterialTheme.typography.titleLarge)
 
             if (multipleAccounts && selectedAccount != null) {
@@ -1725,6 +1727,7 @@ private fun NotificationSettingsCard(
                     enabled = systemState.masterEnabled,
                 )
                 if (account.notificationsEnabled) {
+                    SettingsDivider()
                     NotificationToggleWithTest(
                         title = stringResource(R.string.notifications_new_title),
                         subtitle = stringResource(R.string.notifications_new_body),
@@ -1805,7 +1808,7 @@ private fun NotificationSettingsCard(
                     )
 
                 }
-                HorizontalDivider()
+                SettingsDivider()
                 val blockedMessage = when {
                     !systemState.appEnabled -> R.string.notifications_system_app_blocked
                     !systemState.accountEnabled -> R.string.notifications_system_account_blocked
@@ -1864,7 +1867,7 @@ private fun AboutCard() {
     val context = LocalContext.current
 
     Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Text(stringResource(R.string.settings_section_about), style = MaterialTheme.typography.titleLarge)
 
             Text(
@@ -1882,7 +1885,7 @@ private fun AboutCard() {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
-            HorizontalDivider()
+            SettingsDivider()
 
             Text(
                 stringResource(R.string.about_version, BuildConfig.VERSION_NAME),
@@ -1919,6 +1922,11 @@ private fun AboutCard() {
 // ──────────────────────────────────────────────────
 
 @Composable
+private fun SettingsDivider() {
+    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+}
+
+@Composable
 private fun SectionTitle(title: String) {
     Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
 }
@@ -1951,10 +1959,11 @@ private fun PollingSlider(
 
 @Composable
 private fun ServerUrlSection(state: MainUiState, viewModel: MainViewModel) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .heightIn(min = 48.dp)
                 .clickable(onClick = viewModel::toggleServerUrlSettings),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,

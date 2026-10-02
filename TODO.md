@@ -106,6 +106,7 @@
 ---
 
 ## Settings
+- [x] Use consistent, spacious section margins and separators throughout settings
 - [x] Separate the sections more clearly instead of having a big "Oasis" section with everything in it
 
 ### Account management section
