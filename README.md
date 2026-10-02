@@ -74,11 +74,13 @@ Les formulaires de connexion de l’onboarding et des paramètres utilisent le s
 
 ## Lancer le serveur mock
 
-Le serveur mock utilise uniquement la bibliothèque standard Python et expose les mêmes routes que le client Oasis attendu par l'application.
+Le simulateur utilise uniquement la bibliothèque standard Python (3.10+) et expose les routes de lecture Oasis attendues par l'application. Il propose une [administration web](http://127.0.0.1:8080/admin) pour gérer les comptes, informations personnelles, années/semestres, UEs, matières, notes, cursus, choix et documents. Les données sont persistantes et séparées par étudiant.
 
 ```powershell
 py -3 .\mock_server\mock_oasis_server.py --host 0.0.0.0 --port 8080
 ```
+
+Ouvre `/admin` sur le PC. Au premier lancement, les comptes fictifs sont `demo` / `demo` et `lea` / `lea`. Le mock vérifie les mots de passe et simule les sessions expirées, les dix tentatives avant blocage IP, la fermeture d'Oasis et les pannes réseau. Il permet d'importer les anciens rapports de reverse, d'exporter/restaurer les données et de configurer les réponses des routes encore inconnues. Le guide complet est dans [mock_server/README.md](mock_server/README.md).
 
 Vérification rapide:
 
@@ -94,7 +96,7 @@ Invoke-RestMethod http://127.0.0.1:8080/api/scenarios
 3. Déplie `Avancé`.
 4. Mets l'URL Oasis à `http://10.0.2.2:8080/`.
 5. L’URL est enregistrée automatiquement.
-6. Ajoute un compte avec n'importe quel login et mot de passe non vides.
+6. Ajoute un compte enregistré dans le simulateur, par exemple `demo` / `demo`.
 7. Reviens sur `Oasis` puis appuie sur l'icône de rafraîchissement.
 
 `10.0.2.2` ne fonctionne que depuis l'émulateur Android.
@@ -118,7 +120,7 @@ adb install -r .\app\build\outputs\apk\debug\app-debug.apk
 
 6. Dans `Réglages > Avancé`, mets l'URL Oasis à `http://<IP_DU_PC>:8080/`.
 7. L’URL est enregistrée automatiquement.
-8. Ajoute un compte avec un login et un mot de passe non vides.
+8. Ajoute un compte enregistré dans le simulateur, par exemple `demo` / `demo`.
 9. Reviens sur `Oasis` puis lance un rafraîchissement.
 
 Si ça marche sur émulateur mais pas sur téléphone, la cause la plus fréquente est presque toujours réseau:
@@ -178,22 +180,29 @@ Tu peux aussi utiliser `Logcat`, sélectionner le téléphone branché, puis fil
 
 ## Simuler une nouvelle note et une note modifiée
 
-Nouvelle note:
+Dans l'administration web, ouvre `Notes` et applique `Nouvelle note` ou `Note corrigée` au compte sélectionné. Les scénarios remplacent ses résultats 2025/2026. Pour utiliser l'API, récupère d'abord le jeton CSRF :
 
 ```powershell
-Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8080/api/admin/scenario -ContentType 'application/json' -Body '{"scenario":"new_note"}'
+$snapshot = Invoke-WebRequest http://127.0.0.1:8080/api/admin/state
+$headers = @{ 'X-CSRF-Token' = $snapshot.Headers['X-CSRF-Token'] }
+```
+
+Nouvelle note (tous les comptes ; ajoute `account_id` pour cibler un compte) :
+
+```powershell
+Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8080/api/admin/scenario -Headers $headers -ContentType 'application/json' -Body '{"scenario":"new_note"}'
 ```
 
 Note modifiée:
 
 ```powershell
-Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8080/api/admin/scenario -ContentType 'application/json' -Body '{"scenario":"updated_note"}'
+Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8080/api/admin/scenario -Headers $headers -ContentType 'application/json' -Body '{"scenario":"updated_note"}'
 ```
 
 Scénario suivant:
 
 ```powershell
-Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8080/api/admin/cycle -ContentType 'application/json' -Body '{}'
+Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8080/api/admin/cycle -Headers $headers -ContentType 'application/json' -Body '{}'
 ```
 
 Ensuite, attends le prochain polling ou appuie sur le bouton de rafraîchissement dans `Oasis`.

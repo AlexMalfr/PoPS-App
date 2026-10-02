@@ -1,5 +1,12 @@
 # TODO
 
+## Simulateur Oasis
+- [x] Remplacer la connexion permissive par des comptes persistants, mots de passe vérifiés, sessions isolées/expirables et dix tentatives avant blocage IP
+- [x] Ajouter une administration web des comptes, informations personnelles, UEs, matières, notes, cursus, choix et documents/photos
+- [x] Reprendre les contrats de lecture des anciens rapports et permettre leur import, les sauvegardes et les réponses API personnalisées
+- [x] Simuler fermeture, blocage IP, latence et pannes HTTP ; vérifier les contrats avec des tests isolés
+- [ ] Reprendre le reverse des mutations et des règles de calcul/fermeture quand Oasis sera accessible, avec plusieurs comptes étudiants
+
 ---
 
 ## Github repository & app package
