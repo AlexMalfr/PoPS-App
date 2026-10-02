@@ -147,7 +147,8 @@
   - [ ] explains that the app is unofficial, not affiliated with the school, made by a student, and 100% vibe coded, and that they are welcome to contribute, report issues etc.
   - [ ] Make sure exported logs / issue reports redact credentials, cookies, names, addresses, and other personal data by default (how? maybe mark with a certain syntax the parts of logs that contain personal data to be able to redact them easily when attached to an issue report or shared with support)
   - [x] Add a small diagnostics section (app version, last sync time, selected sync mode, mock/prod URL)
-    - [ ] fix: The app version shown in the app is not the same as the real app version
+    - [x] fix: The app version shown in the app is not the same as the real app version
+    - [x] Generate version code/name automatically from Git history and revision, with a fingerprint for local source changes
 
 ---
 

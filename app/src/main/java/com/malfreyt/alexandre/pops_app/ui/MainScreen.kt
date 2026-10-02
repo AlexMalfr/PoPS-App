@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
+import com.malfreyt.alexandre.pops_app.BuildConfig
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.BorderStroke
@@ -1857,9 +1858,8 @@ private fun AboutCard() {
 
             HorizontalDivider()
 
-            // TODO: replace with BuildConfig.VERSION_NAME once build is configured
             Text(
-                stringResource(R.string.about_version, "0.1.0-dev"),
+                stringResource(R.string.about_version, BuildConfig.VERSION_NAME),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

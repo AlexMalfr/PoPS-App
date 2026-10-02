@@ -27,7 +27,24 @@ PoPS est une application Android Kotlin/Compose pour consulter les notes Oasis, 
 .\gradlew.bat assembleDebug
 ```
 
-L'APK debug est généré dans `app\build\outputs\apk\debug\app-debug.apk`.
+L'APK debug est généré dans `app\build\outputs\apk\debug\app-debug.apk`. Sous Windows avec `LOCALAPPDATA`, il se trouve dans `$env:LOCALAPPDATA\PoPS-App-Build\app\outputs\apk\debug\app-debug.apk` pour éviter les conflits OneDrive.
+
+Le build nécessite Git avec l'historique complet et un JDK 21 complet. Si Gradle choisit le JRE de VS Code sans `jlink`, utilise le JDK d'Android Studio :
+
+```powershell
+$env:JAVA_HOME = 'C:/Program Files/Android/Android Studio/jbr'
+.\gradlew.bat --no-daemon '-Dorg.gradle.java.installations.auto-detect=false' '-Dorg.gradle.java.installations.paths=C:/Program Files/Android/Android Studio/jbr' :app:assembleDebug
+```
+
+## Versions automatiques
+
+Aucun numéro n'est à mettre à jour à la main. Gradle génère `versionCode` depuis le nombre de commits Git et `versionName` au format `0.<compteur>+<hash>`, avec `-debug` pour un APK debug. La section À propos affiche exactement cette version Android. Par exemple, `0.12+abcd1234-debug` est plus récent que `0.11+efab5678-debug` sur l'historique publié de `main` ; le hash permet de retrouver la révision exacte.
+
+Des modifications locales du code ajoutent `-dirty.<empreinte>` : deux états locaux différents ont des identifiants différents, sans modifier le compteur. Le compteur seul ne départage pas ces builds locaux ni des branches divergentes. Pour partager une version comparable, commit puis reconstruis depuis `main`. Conserve l'historique publié, et utilise un clone complet (CI : `fetch-depth: 0`). Un clone superficiel échoue explicitement plutôt que de produire un compteur incorrect.
+
+```powershell
+.\gradlew.bat :app:printAppVersion
+```
 
 ## Utilisation normale
 
