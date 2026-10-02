@@ -114,6 +114,7 @@
 
 ## Settings
 - [x] Use consistent, spacious section margins and separators throughout settings
+  - [x] Keep advanced disclosures discreet, group account scopes with headings, and tighten master-toggle, preview-button and wrapped-button spacing
 - [x] Separate the sections more clearly instead of having a big "Oasis" section with everything in it
 
 ### Account management section

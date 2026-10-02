@@ -54,7 +54,7 @@ Des modifications locales du code ajoutent `-dirty.<empreinte>` : deux états lo
 4. Choisis la fréquence de vérification et l'état des notifications.
 5. Ouvre `URL du serveur` pour changer l’instance, ou `Synchro > Avancé` pour les conditions réseau/charge et les erreurs TLS.
 
-Les sections des réglages utilisent les mêmes marges et des séparateurs espacés entre les groupes de commandes.
+Les sections des réglages utilisent les mêmes marges et des séparateurs espacés entre les groupes de commandes. Les menus avancés restent discrets ; les mentions de compte sont regroupées avec les titres et les rangées de boutons restent rapprochées.
 
 Tous les réglages sont enregistrés automatiquement. L’URL est enregistrée après une courte pause de saisie ; une URL invalide ne remplace pas le serveur enregistré et un champ vide utilise l’instance par défaut.
 

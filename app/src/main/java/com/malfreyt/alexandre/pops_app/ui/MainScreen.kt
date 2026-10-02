@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -1380,7 +1381,7 @@ private fun AccountSettingsCard(
                     onSelectAccount = viewModel::selectAccount,
                 )
 
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(0.dp)) {
                     OutlinedButton(onClick = { editorState = AccountEditorState() }) {
                         Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(6.dp))
@@ -1422,8 +1423,6 @@ private fun AccountSettingsCard(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-
-            SettingsDivider()
 
             ServerUrlSection(state = state, viewModel = viewModel)
         }
@@ -1612,12 +1611,14 @@ private fun SyncSettingsCard(
 
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Text(stringResource(R.string.settings_section_sync), style = MaterialTheme.typography.titleLarge)
+            SettingsSectionHeading(
+                title = stringResource(R.string.settings_section_sync),
+                accountName = account?.resolvedDisplayName(),
+            )
 
             if (account == null) {
                 Text(stringResource(R.string.sync_settings_no_account))
             } else {
-                Text(stringResource(R.string.account_settings_scope, account.resolvedDisplayName()), style = MaterialTheme.typography.bodySmall)
                 SettingToggleRow(
                     icon = { Icon(Icons.Filled.Sync, contentDescription = null) },
                     title = stringResource(R.string.background_sync_title),
@@ -1629,14 +1630,13 @@ private fun SyncSettingsCard(
                     PollingSlider(current = account.pollingMinutes, onChange = viewModel::updatePollingMinutes)
                 }
             }
-            SettingsDivider()
-            Row(
-                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(onClick = viewModel::toggleAdvancedSettings),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(stringResource(R.string.advanced_title), style = MaterialTheme.typography.bodyLarge)
-                Icon(if (state.advancedSettingsVisible) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore, contentDescription = null)
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                SettingsDivider()
+                SettingsDisclosureRow(
+                    title = stringResource(R.string.advanced_title),
+                    expanded = state.advancedSettingsVisible,
+                    onClick = viewModel::toggleAdvancedSettings,
+                )
             }
             if (state.advancedSettingsVisible) {
                 if (account != null) {
@@ -1698,15 +1698,10 @@ private fun NotificationSettingsCard(
 
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Text(stringResource(R.string.settings_section_notifications), style = MaterialTheme.typography.titleLarge)
-
-            if (multipleAccounts && selectedAccount != null) {
-                Text(
-                    stringResource(R.string.account_settings_scope, selectedAccount.resolvedDisplayName()),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+            SettingsSectionHeading(
+                title = stringResource(R.string.settings_section_notifications),
+                accountName = selectedAccount?.resolvedDisplayName()?.takeIf { multipleAccounts },
+            )
 
             if (selectedAccount == null) {
                 Text(
@@ -1717,17 +1712,19 @@ private fun NotificationSettingsCard(
             }
 
             selectedAccount?.let { account ->
-                SettingToggleRow(
-                    icon = { Icon(Icons.Filled.Notifications, contentDescription = null) },
-                    title = stringResource(R.string.notifications_master_title),
-                    subtitle = null,
-                    checked = account.notificationsEnabled && systemState.masterEnabled,
-                    onCheckedChange = viewModel::updateNotificationsEnabled,
-                    switchModifier = Modifier.testTag("notifications_master_switch"),
-                    enabled = systemState.masterEnabled,
-                )
-                if (account.notificationsEnabled) {
+                Column {
+                    SettingToggleRow(
+                        icon = { Icon(Icons.Filled.Notifications, contentDescription = null) },
+                        title = stringResource(R.string.notifications_master_title),
+                        subtitle = null,
+                        checked = account.notificationsEnabled && systemState.masterEnabled,
+                        onCheckedChange = viewModel::updateNotificationsEnabled,
+                        switchModifier = Modifier.testTag("notifications_master_switch"),
+                        enabled = systemState.masterEnabled,
+                    )
                     SettingsDivider()
+                }
+                if (account.notificationsEnabled) {
                     NotificationToggleWithTest(
                         title = stringResource(R.string.notifications_new_title),
                         subtitle = stringResource(R.string.notifications_new_body),
@@ -1808,7 +1805,9 @@ private fun NotificationSettingsCard(
                     )
 
                 }
-                SettingsDivider()
+                if (account.notificationsEnabled) {
+                    SettingsDivider()
+                }
                 val blockedMessage = when {
                     !systemState.appEnabled -> R.string.notifications_system_app_blocked
                     !systemState.accountEnabled -> R.string.notifications_system_account_blocked
@@ -1846,14 +1845,19 @@ private fun NotificationToggleWithTest(
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(title, color = MaterialTheme.colorScheme.onSurface.copy(alpha = if (enabled) 1f else 0.38f))
             Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (enabled) 1f else 0.38f))
         }
-        TextButton(onClick = onTest, enabled = enabled, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)) {
+        TextButton(
+            onClick = onTest,
+            enabled = enabled,
+            modifier = Modifier.widthIn(min = 40.dp),
+            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
+        ) {
             Text(stringResource(R.string.notifications_test_action), style = MaterialTheme.typography.labelSmall)
         }
         Switch(checked = checked, onCheckedChange = onCheckedChange, enabled = enabled, modifier = Modifier.testTag(testTag))
@@ -1922,6 +1926,37 @@ private fun AboutCard() {
 // ──────────────────────────────────────────────────
 
 @Composable
+private fun SettingsSectionHeading(title: String, accountName: String?) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(title, style = MaterialTheme.typography.titleLarge)
+        accountName?.let {
+            Text(
+                stringResource(R.string.account_settings_scope, it),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
+private fun SettingsDisclosureRow(title: String, expanded: Boolean, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().heightIn(min = 32.dp).clickable(onClick = onClick),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(title, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Icon(
+            if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+            contentDescription = null,
+            modifier = Modifier.size(20.dp),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
 private fun SettingsDivider() {
     HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 }
@@ -1959,19 +1994,13 @@ private fun PollingSlider(
 
 @Composable
 private fun ServerUrlSection(state: MainUiState, viewModel: MainViewModel) {
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = 48.dp)
-                .clickable(onClick = viewModel::toggleServerUrlSettings),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(stringResource(R.string.oasis_url_label), style = MaterialTheme.typography.bodyLarge)
-            Icon(
-                if (state.serverUrlVisible) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
-                contentDescription = null,
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            SettingsDivider()
+            SettingsDisclosureRow(
+                title = stringResource(R.string.oasis_url_label),
+                expanded = state.serverUrlVisible,
+                onClick = viewModel::toggleServerUrlSettings,
             )
         }
         if (state.serverUrlVisible) {
