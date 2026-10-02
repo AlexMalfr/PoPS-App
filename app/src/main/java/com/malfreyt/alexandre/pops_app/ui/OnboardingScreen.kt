@@ -59,11 +59,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalAutofillManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -83,6 +83,7 @@ fun OnboardingScreen(
 ) {
     val context = LocalContext.current
     val activity = context as? Activity
+    val autofill = LocalAutofillManager.current
     val pagerState = rememberPagerState(pageCount = { ONBOARDING_PAGE_COUNT })
     val scope = rememberCoroutineScope()
 
@@ -156,6 +157,7 @@ fun OnboardingScreen(
     }
 
     fun goBack() {
+        if (pagerState.currentPage == 1) autofill?.cancel()
         val targetPage = pagerState.currentPage - 1
         // Reset skip state of the page we're navigating back to
         when (targetPage) {
@@ -282,7 +284,7 @@ fun OnboardingScreen(
                                 if (hasAccount) {
                                     scope.launch { pagerState.animateScrollToPage(2) }
                                 } else {
-                                    viewModel.saveAccount(null, onboardingLogin, onboardingPassword)
+                                    viewModel.saveAccount(null, onboardingLogin, onboardingPassword) { autofill?.commit() }
                                 }
                             },
                             enabled = if (hasAccount) true
@@ -390,23 +392,11 @@ private fun OnboardingDataPage(
                 )
             }
         } else {
-            OutlinedTextField(
-                value = login,
-                onValueChange = onLoginChange,
-                label = { Text(stringResource(R.string.login_label)) },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                enabled = !state.isSavingAccount,
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            OutlinedTextField(
-                value = password,
-                onValueChange = onPasswordChange,
-                label = { Text(stringResource(R.string.password_label)) },
-                modifier = Modifier.fillMaxWidth(),
-                visualTransformation = PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                singleLine = true,
+            AccountCredentialsFields(
+                login = login,
+                password = password,
+                onLoginChange = onLoginChange,
+                onPasswordChange = onPasswordChange,
                 enabled = !state.isSavingAccount,
             )
             state.errorDialog?.let { error ->

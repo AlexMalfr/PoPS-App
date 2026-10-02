@@ -116,8 +116,8 @@
     - [x] Add a "remove account / log out" action for selected account
       - [x] fix: the red "log out" btn is way too long vertically for some reason
     - [ ] Add the "forgot password" feature
-    - [ ] Fix the password manager interaction with the system so it can suggest to the user to use the saved password for the actual oasis website
-      - [ ] Currently the password manager opens to *save* the entered password, but doesn't offer it later when logging in again
+    - [x] Fix password manager interaction in onboarding and settings with native Android Autofill hints; offer saving only after successful authentication
+      - [ ] Automatic sharing with the Oasis website requires Oasis to publish Digital Asset Links for the app signing certificate
   - [x] Make an "error" state when the last fetch for an account failed (except no internet error), with a "retry" button that only retries that account
   - [x] Explain that the login info is stored locally and encrypted, and that it's only used to fetch data from Oasis and never shared with anyone, not even the developer, and that the user can remove it at any time by deleting their account in the app or uninstalling the app
     - [x] During the login flow

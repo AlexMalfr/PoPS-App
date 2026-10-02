@@ -47,11 +47,6 @@ data class ErrorDialogState(
     val technicalDetails: String,
 )
 
-data class CredentialSaveRequest(
-    val login: String,
-    val password: String,
-)
-
 data class MainUiState(
     val savedSettings: AppSettings = AppSettings(),
     val draftSettings: AppSettings = AppSettings(),
@@ -70,7 +65,6 @@ data class MainUiState(
     val snackbarMessage: String? = null,
     val snackbarToken: Long = 0L,
     val errorDialog: ErrorDialogState? = null,
-    val pendingCredentialSave: CredentialSaveRequest? = null,
 )
 
 class MainViewModel(
@@ -192,11 +186,13 @@ class MainViewModel(
         _uiState.update { it.copy(errorDialog = null) }
     }
 
-    fun saveAccount(existingAccountId: String?, login: String, password: String) {
+    fun saveAccount(existingAccountId: String?, login: String, password: String, onAuthenticated: () -> Unit = {}) {
         viewModelScope.launch {
             _uiState.update { it.copy(isSavingAccount = true, errorDialog = null) }
             try {
                 val account = repository.upsertAccount(existingAccountId, login, password)
+                // Commit Autofill only after Oasis has accepted these credentials.
+                runCatching { onAuthenticated() }
                 NotificationHelper.createChannel(appContainer.appContext, repository.readSettings())
                 SyncScheduler.reschedule(appContainer.appContext, repository.readSettings())
                 enqueueSnackbar(
@@ -209,7 +205,6 @@ class MainViewModel(
                 _uiState.update {
                     it.copy(
                         isSavingAccount = false,
-                        pendingCredentialSave = CredentialSaveRequest(login = login.trim(), password = password),
                     )
                 }
             } catch (error: Exception) {
@@ -236,10 +231,6 @@ class MainViewModel(
             SyncScheduler.reschedule(appContainer.appContext, repository.readSettings())
             enqueueSnackbar(context.getString(R.string.account_removed, selectedAccount.resolvedDisplayName()))
         }
-    }
-
-    fun consumeCredentialSaveRequest() {
-        _uiState.update { it.copy(pendingCredentialSave = null) }
     }
 
     fun showSnackbarMessage(message: String) {

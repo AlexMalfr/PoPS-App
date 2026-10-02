@@ -138,11 +138,12 @@ class OfflineSettingsTest {
 
     @Test
     fun credentialChangesStillRequireSuccessfulConnection() {
-        instrumentation.runOnMainSync { viewModel.saveAccount(account.id, "changed-login", "changed-password") }
+        var authenticated = false
+        instrumentation.runOnMainSync { viewModel.saveAccount(account.id, "changed-login", "changed-password") { authenticated = true } }
         awaitOperation { !viewModel.uiState.value.isSavingAccount }
         assertNotNull(viewModel.uiState.value.errorDialog)
         assertEquals(account, container.gradeRepository.readSettings().selectedAccountOrNull())
-        assertNull(viewModel.uiState.value.pendingCredentialSave)
+        assertFalse("Failed credentials must not be offered for saving", authenticated)
         assertTrue("Changing credentials must contact Oasis", requests.get() > 0)
     }
 

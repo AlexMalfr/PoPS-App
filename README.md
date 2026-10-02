@@ -42,6 +42,10 @@ Le bouton de sauvegarde est désactivé tant qu'il n'y a pas de changement. L'UR
 
 L'application remonte les années académiques passées jusqu'à rencontrer deux années consécutives sans notes, avec une borne de sécurité de 10 ans.
 
+## Gestionnaires de mots de passe
+
+Les formulaires de connexion de l’onboarding et des paramètres utilisent le service Android Autofill choisi sur le téléphone. Une connexion réussie valide la session pour proposer la sauvegarde ; annuler le formulaire annule cette session.
+
 ## Lancer le serveur mock
 
 Le serveur mock utilise uniquement la bibliothèque standard Python et expose les mêmes routes que le client Oasis attendu par l'application.

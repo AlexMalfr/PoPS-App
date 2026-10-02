@@ -111,13 +111,11 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.SubcomposeAsyncImage
 import com.malfreyt.alexandre.pops_app.R
-import com.malfreyt.alexandre.pops_app.credentials.OasisCredentialManager
-import com.malfreyt.alexandre.pops_app.credentials.findComponentActivity
+import androidx.compose.ui.platform.LocalAutofillManager
 import com.malfreyt.alexandre.pops_app.data.ModuleSummary
 import com.malfreyt.alexandre.pops_app.data.NoteChangeType
 import com.malfreyt.alexandre.pops_app.data.OasisAccount
@@ -140,7 +138,6 @@ fun MainScreen(viewModel: MainViewModel) {
     val state by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
-    val activity = remember(context) { context.findComponentActivity() }
     val settingsSaveEnabled = !state.isSaving && !state.draftSettings.editableEquals(state.savedSettings)
     // Per-tab search queries (saved in memory only)
     var searchQueryEpreuves by rememberSaveable { mutableStateOf("") }
@@ -164,21 +161,6 @@ fun MainScreen(viewModel: MainViewModel) {
         val message = state.snackbarMessage ?: return@LaunchedEffect
         snackbarHostState.showSnackbar(message)
         viewModel.consumeSnackbar()
-    }
-
-    LaunchedEffect(state.pendingCredentialSave) {
-        val request = state.pendingCredentialSave ?: return@LaunchedEffect
-        val currentActivity = activity
-        if (currentActivity != null) {
-            runCatching {
-                OasisCredentialManager.savePasswordCredential(
-                    activity = currentActivity,
-                    login = request.login,
-                    password = request.password,
-                )
-            }
-        }
-        viewModel.consumeCredentialSaveRequest()
     }
 
     state.errorDialog?.let { dialog ->
@@ -1319,7 +1301,7 @@ private fun AccountSettingsCard(
     var shouldCloseEditorAfterSave by remember { mutableStateOf(false) }
     var showRemoveDialog by remember { mutableStateOf(false) }
 
-    LaunchedEffect(state.isSavingAccount, state.errorDialog, state.pendingCredentialSave, state.savedSettings.accounts.size) {
+    LaunchedEffect(state.isSavingAccount, state.errorDialog, state.savedSettings.accounts.size) {
         if (shouldCloseEditorAfterSave && !state.isSavingAccount) {
             if (state.errorDialog == null) {
                 editorState = null
@@ -1338,9 +1320,9 @@ private fun AccountSettingsCard(
                     shouldCloseEditorAfterSave = false
                 }
             },
-            onConfirm = { login, password ->
+            onConfirm = { login, password, onAuthenticated ->
                 shouldCloseEditorAfterSave = true
-                viewModel.saveAccount(editor.accountId, login, password)
+                viewModel.saveAccount(editor.accountId, login, password, onAuthenticated)
             },
         )
     }
@@ -1561,17 +1543,19 @@ private fun AccountEditorDialog(
     initialState: AccountEditorState,
     isSaving: Boolean,
     onDismiss: () -> Unit,
-    onConfirm: (String, String) -> Unit,
+    onConfirm: (String, String, () -> Unit) -> Unit,
 ) {
     var login by remember(initialState) { mutableStateOf(initialState.login) }
     var password by remember(initialState) { mutableStateOf(initialState.password) }
     val isEditing = initialState.accountId != null
+    val autofill = LocalAutofillManager.current
+    val dismiss = { autofill?.cancel(); onDismiss() }
 
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = dismiss,
         confirmButton = {
             Button(
-                onClick = { onConfirm(login, password) },
+                onClick = { onConfirm(login, password) { autofill?.commit() } },
                 enabled = !isSaving && login.isNotBlank() && password.isNotBlank(),
             ) {
                 if (isSaving) {
@@ -1582,7 +1566,7 @@ private fun AccountEditorDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss, enabled = !isSaving) {
+            TextButton(onClick = dismiss, enabled = !isSaving) {
                 Text(stringResource(R.string.dialog_close))
             }
         },
@@ -1597,21 +1581,12 @@ private fun AccountEditorDialog(
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedTextField(
-                    value = login,
-                    onValueChange = { login = it },
-                    label = { Text(stringResource(R.string.login_label)) },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                )
-                OutlinedTextField(
-                    value = password,
-                    onValueChange = { password = it },
-                    label = { Text(stringResource(R.string.password_label)) },
-                    modifier = Modifier.fillMaxWidth(),
-                    visualTransformation = PasswordVisualTransformation(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                    singleLine = true,
+                AccountCredentialsFields(
+                    login = login,
+                    password = password,
+                    onLoginChange = { login = it },
+                    onPasswordChange = { password = it },
+                    enabled = !isSaving,
                 )
                 Text(
                     stringResource(R.string.account_storage_hint),
