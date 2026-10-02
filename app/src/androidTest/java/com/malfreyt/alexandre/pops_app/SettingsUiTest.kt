@@ -131,9 +131,9 @@ class SettingsUiTest {
         })
         org.junit.Assert.assertEquals(NotificationManager.IMPORTANCE_NONE, manager.getNotificationChannel("grades_new_${blocked.id}").importance)
         compose.activityRule.scenario.moveToState(Lifecycle.State.RESUMED)
-        compose.onNodeWithTag("notifications_new_switch").assertIsOn().assertIsNotEnabled()
-        compose.onNodeWithTag("notifications_master_switch").assertIsEnabled()
-        compose.onNodeWithTag("notifications_pending_switch").assertIsEnabled()
+        compose.onNodeWithTag("notifications_new_switch").assertIsOff().assertIsNotEnabled()
+        compose.onNodeWithTag("notifications_master_switch").assertIsEnabled().assertIsOn()
+        compose.onNodeWithTag("notifications_pending_switch").assertIsEnabled().assertIsOn()
         compose.onNodeWithTag("settings_list").performScrollToNode(hasText(context.getString(R.string.notifications_system_categories_blocked)))
         compose.onNodeWithText(context.getString(R.string.notifications_system_categories_blocked)).assertIsDisplayed()
         assertTrue(container.gradeRepository.readSettings().accounts.first { it.id == blocked.id }.notifyNewGrades)
@@ -144,8 +144,10 @@ class SettingsUiTest {
         org.junit.Assume.assumeFalse(NotificationHelper.systemState(context, on.id).appEnabled)
         compose.runOnIdle { state.value = state.value.copy(savedSettings = settings.copy(selectedAccountId = on.id)) }
         compose.onNodeWithTag("settings_list").performScrollToNode(hasTestTag("notifications_master_switch"))
-        compose.onNodeWithTag("notifications_master_switch").assertIsNotEnabled().assertIsOn()
-        compose.onNodeWithTag("notifications_new_switch").assertIsNotEnabled()
+        compose.onNodeWithTag("notifications_master_switch").assertIsNotEnabled().assertIsOff()
+        listOf("notifications_new_switch", "notifications_pending_switch", "notifications_updated_switch", "notifications_error_switch").forEach { tag ->
+            compose.onNodeWithTag(tag).assertIsNotEnabled().assertIsOff()
+        }
         compose.onNodeWithTag("settings_list").performScrollToNode(hasText(context.getString(R.string.notifications_system_app_blocked)))
         compose.onNodeWithText(context.getString(R.string.notifications_system_app_blocked)).assertIsDisplayed()
         assertTrue(container.gradeRepository.readSettings().accounts.first { it.id == on.id }.notificationsEnabled)

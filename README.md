@@ -58,7 +58,7 @@ Tous les réglages sont enregistrés automatiquement. L’URL est enregistrée a
 
 Les réglages restent modifiables sans connexion à Oasis. La fréquence de synchro, les conditions réseau/charge et les notifications sont propres au compte sélectionné. Désactiver les erreurs de synchro, toutes les notifications du compte ou sa synchro en arrière-plan efface l’alerte d’erreur en cours. L’ajout ou la modification des identifiants nécessite toujours une authentification réussie. Un refus conserve les identifiants précédents et rappelle qu’un compte non activé ou une fermeture temporaire d’Oasis peut aussi bloquer la connexion.
 
-Les notifications bloquées par Android apparaissent grisées, avec un accès aux réglages système. L’état est actualisé au retour dans l’app, sans modifier les préférences enregistrées du compte.
+Les notifications bloquées par Android apparaissent désactivées et grisées, avec une explication en rouge et un accès aux réglages système. L’état est actualisé au retour dans l’app, sans modifier les préférences enregistrées du compte.
 
 L'application remonte les années académiques passées jusqu'à rencontrer deux années consécutives sans notes, avec une borne de sécurité de 10 ans.
 

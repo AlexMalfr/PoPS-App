@@ -1719,7 +1719,7 @@ private fun NotificationSettingsCard(
                     icon = { Icon(Icons.Filled.Notifications, contentDescription = null) },
                     title = stringResource(R.string.notifications_master_title),
                     subtitle = null,
-                    checked = account.notificationsEnabled,
+                    checked = account.notificationsEnabled && systemState.masterEnabled,
                     onCheckedChange = viewModel::updateNotificationsEnabled,
                     switchModifier = Modifier.testTag("notifications_master_switch"),
                     enabled = systemState.masterEnabled,
@@ -1728,7 +1728,7 @@ private fun NotificationSettingsCard(
                     NotificationToggleWithTest(
                         title = stringResource(R.string.notifications_new_title),
                         subtitle = stringResource(R.string.notifications_new_body),
-                        checked = account.notifyNewGrades,
+                        checked = account.notifyNewGrades && systemState.isEnabled(AccountNotificationType.NEW),
                         enabled = systemState.isEnabled(AccountNotificationType.NEW),
                         testTag = "notifications_new_switch",
                         onCheckedChange = viewModel::updateNotifyNewGrades,
@@ -1749,7 +1749,7 @@ private fun NotificationSettingsCard(
                     NotificationToggleWithTest(
                         title = stringResource(R.string.notifications_pending_title),
                         subtitle = stringResource(R.string.notifications_pending_body),
-                        checked = account.notifyPendingGrades,
+                        checked = account.notifyPendingGrades && systemState.isEnabled(AccountNotificationType.PENDING),
                         enabled = systemState.isEnabled(AccountNotificationType.PENDING),
                         testTag = "notifications_pending_switch",
                         onCheckedChange = viewModel::updateNotifyPendingGrades,
@@ -1770,7 +1770,7 @@ private fun NotificationSettingsCard(
                     NotificationToggleWithTest(
                         title = stringResource(R.string.notifications_updated_title),
                         subtitle = stringResource(R.string.notifications_updated_body),
-                        checked = account.notifyUpdatedGrades,
+                        checked = account.notifyUpdatedGrades && systemState.isEnabled(AccountNotificationType.UPDATED),
                         enabled = systemState.isEnabled(AccountNotificationType.UPDATED),
                         testTag = "notifications_updated_switch",
                         onCheckedChange = viewModel::updateNotifyUpdatedGrades,
@@ -1791,7 +1791,7 @@ private fun NotificationSettingsCard(
                     NotificationToggleWithTest(
                         title = stringResource(R.string.notifications_errors_title),
                         subtitle = stringResource(R.string.notifications_errors_body),
-                        checked = account.notifyErrors,
+                        checked = account.notifyErrors && systemState.isEnabled(AccountNotificationType.ERROR),
                         enabled = systemState.isEnabled(AccountNotificationType.ERROR),
                         testTag = "notifications_error_switch",
                         onCheckedChange = viewModel::updateNotifyErrors,
@@ -1813,7 +1813,7 @@ private fun NotificationSettingsCard(
                     else -> null
                 }
                 blockedMessage?.let {
-                    Text(stringResource(it), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(it), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
                 }
                 OutlinedButton(onClick = {
                     runCatching {
