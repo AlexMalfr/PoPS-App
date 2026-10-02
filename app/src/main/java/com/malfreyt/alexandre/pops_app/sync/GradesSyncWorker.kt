@@ -14,6 +14,9 @@ class GradesSyncWorker(
     override suspend fun doWork(): Result {
         val container = (applicationContext as PoPSApplication).container
         val settings = container.gradeRepository.readSettings()
+        if (settings.pollingMinutes == 0 || !settings.notificationsEnabled || !settings.hasAnySyncableAccount()) {
+            return Result.success()
+        }
         val syncableAccounts = settings.accounts.filter { it.hasCredentials() }
 
         return try {
@@ -27,7 +30,12 @@ class GradesSyncWorker(
                     NotificationHelper.clearSyncFailureNotification(applicationContext, accountId)
                 }
 
-            NotificationHelper.notifyChanges(applicationContext, settings, report.changes)
+            // Preferences may have changed while the network request was in flight.
+            val latestSettings = container.gradeRepository.readSettings()
+            if (latestSettings.pollingMinutes == 0 || !latestSettings.notificationsEnabled) {
+                return Result.success()
+            }
+            NotificationHelper.notifyChanges(applicationContext, latestSettings, report.changes)
 
             val blockingFailures = report.failures.filterNot { it.isNoInternet }
             if (blockingFailures.isEmpty()) {
@@ -44,7 +52,7 @@ class GradesSyncWorker(
                 if (account.notificationsEnabled && account.notifyErrors) {
                     NotificationHelper.notifySyncFailure(
                         context = applicationContext,
-                        settings = settings,
+                        settings = container.gradeRepository.readSettings(),
                         account = account,
                         attempts = failureState.attempts,
                         errorMessage = failureState.shortMessage,

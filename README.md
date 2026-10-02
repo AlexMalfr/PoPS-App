@@ -32,13 +32,13 @@ L'APK debug est généré dans `app\build\outputs\apk\debug\app-debug.apk`.
 ## Utilisation normale
 
 1. Ouvre l'application.
-2. Va dans `Réglages`.
-3. Renseigne le login et le mot de passe Oasis.
+2. Va dans `Réglages` puis ajoute un compte.
+3. Renseigne le login et le mot de passe Oasis. L'ajout ou la modification des identifiants teste la connexion avant d'enregistrer le compte.
 4. Choisis la fréquence de vérification et l'état des notifications.
 5. Ouvre `Avancé` uniquement si tu dois changer l'URL Oasis ou ignorer les erreurs TLS en test.
-6. Appuie sur `Tester puis enregistrer`.
+6. Appuie sur `Enregistrer` (la coche dans la barre haute) pour sauvegarder les autres réglages.
 
-Le bouton de sauvegarde est désactivé tant qu'il n'y a pas de changement. La sauvegarde teste d'abord la connexion. En cas d'échec, l'application affiche une boîte de dialogue avec le détail technique.
+Le bouton de sauvegarde est désactivé tant qu'il n'y a pas de changement. Les réglages généraux (synchro en arrière-plan, fréquence, URL et TLS) sont sauvegardés localement, même si Oasis est inaccessible. Les préférences de notifications par compte sont enregistrées immédiatement : désactiver les erreurs de synchro ou toutes les notifications du compte efface aussi l'alerte d'erreur en cours. Seul l'ajout ou la modification des identifiants d'un compte nécessite une connexion réussie à Oasis ; en cas d'échec, les identifiants précédents sont conservés et une boîte de dialogue affiche le détail technique.
 
 L'application remonte les années académiques passées jusqu'à rencontrer deux années consécutives sans notes, avec une borne de sécurité de 10 ans.
 
@@ -63,8 +63,8 @@ Invoke-RestMethod http://127.0.0.1:8080/api/scenarios
 2. Ouvre `Réglages` dans l'application.
 3. Déplie `Avancé`.
 4. Mets l'URL Oasis à `http://10.0.2.2:8080/`.
-5. Mets n'importe quel login et mot de passe non vides.
-6. Appuie sur `Tester puis enregistrer`.
+5. Appuie sur `Enregistrer` pour sauvegarder l'URL.
+6. Ajoute un compte avec n'importe quel login et mot de passe non vides.
 7. Reviens sur `Oasis` puis appuie sur l'icône de rafraîchissement.
 
 `10.0.2.2` ne fonctionne que depuis l'émulateur Android.
@@ -87,8 +87,8 @@ adb install -r .\app\build\outputs\apk\debug\app-debug.apk
 ```
 
 6. Dans `Réglages > Avancé`, mets l'URL Oasis à `http://<IP_DU_PC>:8080/`.
-7. Mets un login et un mot de passe non vides.
-8. Appuie sur `Tester puis enregistrer`.
+7. Appuie sur `Enregistrer` pour sauvegarder l'URL.
+8. Ajoute un compte avec un login et un mot de passe non vides.
 9. Reviens sur `Oasis` puis lance un rafraîchissement.
 
 Si ça marche sur émulateur mais pas sur téléphone, la cause la plus fréquente est presque toujours réseau:

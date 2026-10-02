@@ -67,6 +67,8 @@
     <string name="dialog_hide_details">Hide technical details</string>
     <string name="dialog_technical_details">Technical details</string>
     <string name="settings_saved">Settings saved</string>
+    <string name="error_settings_title">Could not save settings</string>
+    <string name="error_settings_message">The settings could not be saved locally.</string>
     <string name="settings_configure_before_sync">Configure Oasis in Settings before syncing.</string>
     <string name="error_connection_impossible">Oasis connection failed</string>
     <string name="error_connection_title">Connection failed</string>

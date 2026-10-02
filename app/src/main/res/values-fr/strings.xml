@@ -67,6 +67,8 @@
     <string name="dialog_hide_details">Masquer les détails techniques</string>
     <string name="dialog_technical_details">Détails techniques</string>
     <string name="settings_saved">Réglages enregistrés</string>
+    <string name="error_settings_title">Impossible d\u2019enregistrer les réglages</string>
+    <string name="error_settings_message">Les réglages n\u2019ont pas pu être enregistrés localement.</string>
     <string name="settings_configure_before_sync">Configure Oasis dans Réglages avant de synchroniser.</string>
     <string name="error_connection_impossible">Connexion Oasis impossible</string>
     <string name="error_connection_title">Connexion impossible</string>

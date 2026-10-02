@@ -163,10 +163,10 @@ class MainViewModel(
     fun updateIgnoreTlsErrors(value: Boolean) = updateDraftSettings { copy(ignoreTlsErrors = value) }
     fun updatePollingMinutes(value: Int) = updateDraftSettings { copy(pollingMinutes = value) }
     fun updateNotificationsEnabled(value: Boolean) {
-        val account = _uiState.value.savedSettings.selectedAccountOrNull() ?: return
+        val account = repository.readSettings().selectedAccountOrNull() ?: return
         val updated = account.copy(notificationsEnabled = value)
         repository.saveAccount(updated)
-        NotificationHelper.createChannel(appContainer.appContext, repository.readSettings())
+        applyNotificationSettings()
     }
     fun updateNotifyNewGrades(value: Boolean) = updateSelectedAccountNotification(AccountNotificationType.NEW, value)
     fun updateNotifyPendingGrades(value: Boolean) = updateSelectedAccountNotification(AccountNotificationType.PENDING, value)
@@ -247,11 +247,9 @@ class MainViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isSaving = true, errorDialog = null) }
             try {
-                candidate.selectedAccountOrNull()?.takeIf(OasisAccount::hasCredentials)?.let { account ->
-                    repository.testConnection(candidate, account.login, account.password)
-                }
-                repository.saveSettings(candidate)
-                NotificationHelper.createChannel(appContainer.appContext, repository.readSettings())
+                // Credentials are validated by saveAccount; preferences must remain editable offline.
+                repository.saveSettings(candidate.withRuntimeStateFrom(repository.readSettings()))
+                applyNotificationSettings()
                 SyncScheduler.reschedule(appContainer.appContext, repository.readSettings())
                 enqueueSnackbar(context.getString(R.string.settings_saved))
                 _uiState.update {
@@ -265,8 +263,8 @@ class MainViewModel(
                     it.copy(
                         isSaving = false,
                         errorDialog = ErrorDialogState(
-                            title = context.getString(R.string.error_connection_title),
-                            message = error.message ?: context.getString(R.string.error_connection_message),
+                            title = context.getString(R.string.error_settings_title),
+                            message = error.message ?: context.getString(R.string.error_settings_message),
                             technicalDetails = error.toTechnicalDetails(),
                         ),
                     )
@@ -404,7 +402,7 @@ class MainViewModel(
     }
 
     private fun updateSelectedAccountNotification(type: AccountNotificationType, enabled: Boolean) {
-        val account = _uiState.value.savedSettings.selectedAccountOrNull() ?: return
+        val account = repository.readSettings().selectedAccountOrNull() ?: return
         val updated = when (type) {
             AccountNotificationType.NEW -> account.copy(notifyNewGrades = enabled)
             AccountNotificationType.PENDING -> account.copy(notifyPendingGrades = enabled)
@@ -412,7 +410,21 @@ class MainViewModel(
             AccountNotificationType.ERROR -> account.copy(notifyErrors = enabled)
         }
         repository.saveAccount(updated)
-        NotificationHelper.createChannel(appContainer.appContext, repository.readSettings())
+        applyNotificationSettings()
+    }
+
+    private fun applyNotificationSettings() {
+        val settings = repository.readSettings()
+        NotificationHelper.createChannel(appContainer.appContext, settings)
+        settings.accounts.filter { account ->
+            settings.pollingMinutes == 0 || !settings.notificationsEnabled ||
+                !account.isNotificationEnabled(AccountNotificationType.ERROR)
+        }.forEach { account ->
+            NotificationHelper.clearSyncFailureNotification(appContainer.appContext, account.id)
+            if (account.failureNotificationActive) {
+                appContainer.settingsStore.markFailureNotificationDismissed(account.id)
+            }
+        }
     }
 
     private fun defaultGradeSortAscending(mode: GradeSortMode): Boolean {
