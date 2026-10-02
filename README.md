@@ -42,6 +42,10 @@ Le bouton de sauvegarde est désactivé tant qu'il n'y a pas de changement. L'UR
 
 L'application remonte les années académiques passées jusqu'à rencontrer deux années consécutives sans notes, avec une borne de sécurité de 10 ans.
 
+## Serveur dans l'onboarding
+
+Dans l'onboarding, « Changer de serveur » en bas de la page de connexion déplie un champ d’URL. Le laisser vide utilise l’instance par défaut affichée en placeholder. La connexion teste cette URL, puis enregistre l'URL et le compte ensemble uniquement après authentification réussie. Une erreur conserve les réglages précédents. Une URL HTTP(S) avec un chemin de base est acceptée, notamment pour le mock local.
+
 ## Gestionnaires de mots de passe
 
 Les formulaires de connexion de l’onboarding et des paramètres utilisent le service Android Autofill choisi sur le téléphone. Une connexion réussie valide la session pour proposer la sauvegarde ; annuler le formulaire annule cette session.

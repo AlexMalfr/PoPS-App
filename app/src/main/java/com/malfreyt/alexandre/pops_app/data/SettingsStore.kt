@@ -41,7 +41,7 @@ class SettingsStore(context: Context) {
         persist(settings.normalized())
     }
 
-    fun saveAccount(account: OasisAccount, select: Boolean = false) {
+    fun saveAccount(account: OasisAccount, select: Boolean = false, oasisBaseUrl: String? = null) {
         val normalizedAccount = account.normalized()
         mutateSettings { current ->
             val accounts = current.accounts.toMutableList()
@@ -54,6 +54,7 @@ class SettingsStore(context: Context) {
 
             current.copy(
                 accounts = accounts,
+                oasisBaseUrl = oasisBaseUrl ?: current.oasisBaseUrl,
                 selectedAccountId = when {
                     select -> normalizedAccount.id
                     current.selectedAccountId == null -> normalizedAccount.id
@@ -245,7 +246,6 @@ class SettingsStore(context: Context) {
     companion object {
         private const val PREFS_NAME = "pops_secure_preferences"
         private const val KEY_SETTINGS_JSON = "settings_json_v2"
-        private const val DEFAULT_OASIS_BASE_URL = "https://polytech-saclay.oasis.aouka.org/"
     }
 }
 

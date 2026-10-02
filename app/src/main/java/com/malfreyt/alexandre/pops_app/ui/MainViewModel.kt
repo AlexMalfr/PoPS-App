@@ -186,11 +186,11 @@ class MainViewModel(
         _uiState.update { it.copy(errorDialog = null) }
     }
 
-    fun saveAccount(existingAccountId: String?, login: String, password: String, onAuthenticated: () -> Unit = {}) {
+    fun saveAccount(existingAccountId: String?, login: String, password: String, oasisBaseUrl: String? = null, onAuthenticated: () -> Unit = {}) {
         viewModelScope.launch {
             _uiState.update { it.copy(isSavingAccount = true, errorDialog = null) }
             try {
-                val account = repository.upsertAccount(existingAccountId, login, password)
+                val account = repository.upsertAccount(existingAccountId, login, password, oasisBaseUrl)
                 // Commit Autofill only after Oasis has accepted these credentials.
                 runCatching { onAuthenticated() }
                 NotificationHelper.createChannel(appContainer.appContext, repository.readSettings())

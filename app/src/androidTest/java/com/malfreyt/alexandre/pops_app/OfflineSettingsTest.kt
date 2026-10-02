@@ -40,6 +40,8 @@ class OfflineSettingsTest {
     private lateinit var server: ServerSocket
     private lateinit var serverThread: Thread
     private val requests = AtomicInteger()
+    @Volatile private var acceptsCredentials = false
+    private val requestPaths = java.util.concurrent.ConcurrentLinkedQueue<String>()
     private val channelId = "grades_errors_${account.id}"
     private val notificationId = 10_000 + ((account.id.hashCode() and 0x7fffffff) % 100_000)
 
@@ -59,8 +61,13 @@ class OfflineSettingsTest {
                 while (!server.isClosed) {
                     server.accept().use { socket ->
                         requests.incrementAndGet()
+                        socket.soTimeout = 2000
+                        val requestLine = socket.getInputStream().bufferedReader().readLine().orEmpty()
+                        requestPaths.add(requestLine.split(" ").getOrElse(1) { "" })
+                        val body = if (acceptsCredentials) "{\"success\":true}" else ""
+                        val status = if (acceptsCredentials) "200 OK" else "503 Service Unavailable"
                         socket.getOutputStream().write(
-                            "HTTP/1.1 503 Service Unavailable\r\nContent-Length: 0\r\nConnection: close\r\n\r\n".toByteArray()
+                            "HTTP/1.1 $status\r\nContent-Type: application/json\r\nContent-Length: ${body.toByteArray().size}\r\nConnection: close\r\n\r\n$body".toByteArray()
                         )
                     }
                 }
@@ -89,7 +96,7 @@ class OfflineSettingsTest {
         serverThread.join(1000)
         val manager = appContext.getSystemService(NotificationManager::class.java)
         manager.cancel(notificationId)
-        listOf(account.id, "offline-settings-test-second").forEach { id ->
+        (container.gradeRepository.readSettings().accounts.map { it.id } + listOf(account.id, "offline-settings-test-second")).toSet().forEach { id ->
             listOf("new", "pending", "updated", "errors").forEach {
                 manager.deleteNotificationChannel("grades_${it}_$id")
             }
@@ -226,6 +233,36 @@ class OfflineSettingsTest {
         assertFalse(migrated.syncUnmeteredOnly)
         preferences.edit().putString("settings_json_v2", """{"notificationsEnabled":false,"pollingMinutes":360,"accounts":[{"id":"legacy","login":"test","password":"test"}]}""").commit()
         assertEquals(0, AppContainer(context).gradeRepository.readSettings().selectedAccountOrNull()!!.pollingMinutes)
+    }
+
+    @Test
+    fun customOnboardingServerIsUsedAndSavedOnlyAfterAuthentication() {
+        acceptsCredentials = true
+        var authenticated = false
+        val customUrl = "http://127.0.0.1:${server.localPort}/custom"
+        instrumentation.runOnMainSync {
+            viewModel.saveAccount(null, "new-test-account", "test-password", oasisBaseUrl = customUrl) { authenticated = true }
+        }
+        awaitOperation { !viewModel.uiState.value.isSavingAccount }
+        assertNull(viewModel.uiState.value.errorDialog)
+        assertTrue(authenticated)
+        val reopened = AppContainer(container.appContext).gradeRepository.readSettings()
+        assertEquals("$customUrl/", reopened.oasisBaseUrl)
+        assertEquals("new-test-account", reopened.selectedAccountOrNull()!!.login)
+        assertTrue(requestPaths.all { it.startsWith("/custom/") })
+        assertTrue(requests.get() >= 2)
+    }
+
+    @Test
+    fun failedCustomServerLoginKeepsPreviousServerAndAccount() {
+        val previous = container.gradeRepository.readSettings()
+        val customUrl = "http://127.0.0.1:${server.localPort}/unavailable/"
+        instrumentation.runOnMainSync { viewModel.saveAccount(account.id, "changed", "changed", oasisBaseUrl = customUrl) }
+        awaitOperation { !viewModel.uiState.value.isSavingAccount }
+        assertNotNull(viewModel.uiState.value.errorDialog)
+        assertEquals(previous, container.gradeRepository.readSettings())
+        assertTrue(requestPaths.all { it.startsWith("/unavailable/") })
+        assertTrue(requests.get() > 0)
     }
 
     private fun seedFailureNotification() {

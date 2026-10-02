@@ -71,7 +71,7 @@ enum class AccountNotificationType {
 data class AppSettings(
     val accounts: List<OasisAccount> = emptyList(),
     val selectedAccountId: String? = null,
-    val oasisBaseUrl: String = "https://polytech-saclay.oasis.aouka.org/",
+    val oasisBaseUrl: String = DEFAULT_OASIS_BASE_URL,
     val notificationsEnabled: Boolean = true,
     val notifyNewGrades: Boolean = true,
     val notifyPendingGrades: Boolean = true,

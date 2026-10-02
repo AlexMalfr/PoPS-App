@@ -241,4 +241,6 @@
     <string name="battery_dialog_dismiss">Plus tard</string>
     <string name="battery_dialog_learn_more">Pourquoi est-ce important ? →</string>
     <string name="sync_charging_body">Économise la batterie en synchronisant pendant la charge.</string>
+    <string name="onboarding_server_action">Changer de serveur</string>
+    <string name="error_server_url">Saisis une URL HTTP(S) valide, sans identifiants, paramètres ni fragment.</string>
 </resources>

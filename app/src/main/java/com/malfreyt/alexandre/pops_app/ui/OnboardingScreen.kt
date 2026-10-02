@@ -53,6 +53,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -61,6 +62,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalAutofillManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -70,6 +72,8 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import coil.compose.SubcomposeAsyncImage
 import com.malfreyt.alexandre.pops_app.R
+import com.malfreyt.alexandre.pops_app.data.DEFAULT_OASIS_BASE_URL
+import com.malfreyt.alexandre.pops_app.data.normalizeOasisBaseUrl
 import kotlinx.coroutines.launch
 
 private const val ONBOARDING_PAGE_COUNT = 4
@@ -92,6 +96,9 @@ fun OnboardingScreen(
     // ── Page 2: Login state (lifted so the bottom bar can trigger login) ──
     var onboardingLogin by remember { mutableStateOf("") }
     var onboardingPassword by remember { mutableStateOf("") }
+    var onboardingServerUrl by rememberSaveable {
+        mutableStateOf(state.savedSettings.oasisBaseUrl.takeUnless { it == DEFAULT_OASIS_BASE_URL }.orEmpty())
+    }
 
     // ── Page 3: Notifications state ──
     var notificationsGranted by remember {
@@ -192,6 +199,8 @@ fun OnboardingScreen(
                         password = onboardingPassword,
                         onLoginChange = { onboardingLogin = it },
                         onPasswordChange = { onboardingPassword = it },
+                        serverUrl = onboardingServerUrl,
+                        onServerUrlChange = { onboardingServerUrl = it },
                         onLogout = {
                             viewModel.removeSelectedAccount()
                             onboardingLogin = ""
@@ -284,11 +293,11 @@ fun OnboardingScreen(
                                 if (hasAccount) {
                                     scope.launch { pagerState.animateScrollToPage(2) }
                                 } else {
-                                    viewModel.saveAccount(null, onboardingLogin, onboardingPassword) { autofill?.commit() }
+                                    viewModel.saveAccount(null, onboardingLogin, onboardingPassword, oasisBaseUrl = onboardingServerUrl) { autofill?.commit() }
                                 }
                             },
                             enabled = if (hasAccount) true
-                                else !state.isSavingAccount && onboardingLogin.isNotBlank() && onboardingPassword.isNotBlank(),
+                                else !state.isSavingAccount && onboardingLogin.isNotBlank() && onboardingPassword.isNotBlank() && normalizeOasisBaseUrl(onboardingServerUrl) != null,
                         ) {
                             if (state.isSavingAccount) {
                                 CircularProgressIndicator(
@@ -350,16 +359,19 @@ private fun OnboardingDisclaimerPage() {
 // ── Page 2: Oasis login ──
 
 @Composable
-private fun OnboardingDataPage(
+internal fun OnboardingDataPage(
     state: MainUiState,
     login: String,
     password: String,
     onLoginChange: (String) -> Unit,
     onPasswordChange: (String) -> Unit,
+    serverUrl: String,
+    onServerUrlChange: (String) -> Unit,
     onLogout: () -> Unit,
 ) {
     val hasAccount = state.savedSettings.accounts.isNotEmpty()
     val selectedAccount = state.savedSettings.selectedAccountOrNull()
+    var showServerUrl by rememberSaveable { mutableStateOf(false) }
 
     OnboardingPageScaffold(
         icon = {
@@ -413,6 +425,24 @@ private fun OnboardingDataPage(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            TextButton(onClick = { showServerUrl = !showServerUrl }, enabled = !state.isSavingAccount) {
+                Text(stringResource(R.string.onboarding_server_action))
+            }
+            if (showServerUrl) {
+                val validUrl = normalizeOasisBaseUrl(serverUrl) != null
+                OutlinedTextField(
+                    value = serverUrl,
+                    onValueChange = onServerUrlChange,
+                    label = { Text(stringResource(R.string.oasis_url_label)) },
+                    placeholder = { Text(DEFAULT_OASIS_BASE_URL) },
+                    modifier = Modifier.fillMaxWidth().testTag("onboarding_server_url"),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+                    singleLine = true,
+                    enabled = !state.isSavingAccount,
+                    isError = !validUrl,
+                    supportingText = if (validUrl) null else { { Text(stringResource(R.string.error_server_url)) } },
+                )
+            }
         }
     }
 }

@@ -28,6 +28,7 @@
   - [x] Add a "Show GitHub repo" button (or other phrasing) that opens the GitHub repository in the browser to encourage users to check it out and maybe contribute or report issues
   - [x] ⇒ Kebab menu should always be the last item of the top bar
 - [x] Add a first-run / onboarding flow (unofficial app disclaimer, data handling disclaimer, notifications permission, background sync limitations + battery optimization permission, etc.)
+  - [x] Add a collapsed custom server URL field at the bottom of the onboarding login page, with validation and the default instance as placeholder when empty
   - [ ] Add the "forgot password" feature
   - [ ] fix: to get the first name, get it from the STUDENT page instead of cutting the full name arount the first space
 

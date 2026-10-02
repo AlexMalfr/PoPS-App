@@ -240,4 +240,6 @@
     <string name="battery_dialog_dismiss">Not now</string>
     <string name="battery_dialog_learn_more">Why is this important? →</string>
     <string name="sync_charging_body">Saves battery by syncing while charging.</string>
+    <string name="onboarding_server_action">Change server</string>
+    <string name="error_server_url">Enter a valid HTTP(S) server URL without credentials, query or fragment.</string>
 </resources>

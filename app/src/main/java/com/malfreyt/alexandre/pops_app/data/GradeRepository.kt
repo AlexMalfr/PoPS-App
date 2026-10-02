@@ -54,8 +54,11 @@ class GradeRepository(
         localStore.removeAccount(accountId)
     }
 
-    suspend fun upsertAccount(existingAccountId: String?, login: String, password: String): OasisAccount {
-        val settings = settingsStore.readSettings()
+    suspend fun upsertAccount(existingAccountId: String?, login: String, password: String, oasisBaseUrl: String? = null): OasisAccount {
+        val currentSettings = settingsStore.readSettings()
+        val baseUrl = normalizeOasisBaseUrl(oasisBaseUrl ?: currentSettings.oasisBaseUrl)
+            ?: throw IllegalArgumentException(context.getString(R.string.error_server_url))
+        val settings = currentSettings.copy(oasisBaseUrl = baseUrl)
         val normalizedLogin = login.trim()
         require(normalizedLogin.isNotBlank() && password.isNotBlank() && settings.oasisBaseUrl.isNotBlank()) {
             context.getString(R.string.error_missing_credentials_url)
@@ -82,7 +85,7 @@ class GradeRepository(
             profilePhotoUrl = profilePhotoUri,
         )
 
-        settingsStore.saveAccount(account, select = true)
+        settingsStore.saveAccount(account, select = true, oasisBaseUrl = baseUrl)
         return account
     }
 

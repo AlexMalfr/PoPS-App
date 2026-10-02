@@ -1322,7 +1322,7 @@ private fun AccountSettingsCard(
             },
             onConfirm = { login, password, onAuthenticated ->
                 shouldCloseEditorAfterSave = true
-                viewModel.saveAccount(editor.accountId, login, password, onAuthenticated)
+                viewModel.saveAccount(editor.accountId, login, password, onAuthenticated = onAuthenticated)
             },
         )
     }
