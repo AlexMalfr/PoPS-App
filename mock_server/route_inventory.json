@@ -1,0 +1,734 @@
+[
+  {
+    "route": "BO\\Assoc\\AssocNtoNTab::delete_assoc",
+    "pages": [
+      "home",
+      "mychoices",
+      "mycursus",
+      "mydocuments",
+      "mymarks",
+      "student"
+    ],
+    "support": "override",
+    "evidence": "discovered_route"
+  },
+  {
+    "route": "BO\\Assoc\\AssocNtoNTab::insert_or_update",
+    "pages": [
+      "home",
+      "mychoices",
+      "mycursus",
+      "mydocuments",
+      "mymarks",
+      "student"
+    ],
+    "support": "override",
+    "evidence": "discovered_route"
+  },
+  {
+    "route": "BO\\Assoc\\AssocNtoNTab::quick_insert",
+    "pages": [
+      "home",
+      "mychoices",
+      "mycursus",
+      "mydocuments",
+      "mymarks",
+      "student"
+    ],
+    "support": "override",
+    "evidence": "discovered_route"
+  },
+  {
+    "route": "BO\\Assoc\\AssocNtoNTab::reload_quick_insert",
+    "pages": [
+      "home",
+      "mychoices",
+      "mycursus",
+      "mydocuments",
+      "mymarks",
+      "student"
+    ],
+    "support": "override",
+    "evidence": "discovered_route"
+  },
+  {
+    "route": "BO\\Config\\Theme::quick_switch",
+    "pages": [
+      "home",
+      "mychoices",
+      "mycursus",
+      "mydocuments",
+      "mymarks",
+      "student"
+    ],
+    "support": "override",
+    "evidence": "discovered_route"
+  },
+  {
+    "route": "BO\\Config\\TinyMCE::add_var",
+    "pages": [
+      "home",
+      "mychoices",
+      "mycursus",
+      "mydocuments",
+      "mymarks",
+      "student"
+    ],
+    "support": "override",
+    "evidence": "discovered_route"
+  },
+  {
+    "route": "BO\\Connection\\Logout::logout",
+    "pages": [
+      "home",
+      "mychoices",
+      "mycursus",
+      "mydocuments",
+      "mymarks",
+      "student"
+    ],
+    "support": "simulated",
+    "evidence": "discovered_route"
+  },
+  {
+    "route": "BO\\Connection\\Maintenance::maintenance",
+    "pages": [
+      "home",
+      "mychoices",
+      "mycursus",
+      "mydocuments",
+      "mymarks",
+      "student"
+    ],
+    "support": "override",
+    "evidence": "discovered_route"
+  },
+  {
+    "route": "BO\\Connection\\Session::extend",
+    "pages": [
+      "home",
+      "mychoices",
+      "mycursus",
+      "mydocuments",
+      "mymarks",
+      "student"
+    ],
+    "support": "simulated",
+    "evidence": "discovered_route"
+  },
+  {
+    "route": "BO\\Connection\\User::login",
+    "pages": [
+      "home",
+      "mychoices",
+      "mycursus",
+      "mydocuments",
+      "mymarks",
+      "public_login",
+      "student"
+    ],
+    "support": "simulated",
+    "evidence": "discovered_route"
+  },
+  {
+    "route": "BO\\Connection\\User::password_init",
+    "pages": [
+      "public_login",
+      "public_password_forgot"
+    ],
+    "support": "simulated",
+    "evidence": "discovered_route"
+  },
+  {
+    "route": "BO\\FilterPanel\\FilterPanel::add_remove",
+    "pages": [
+      "home",
+      "mychoices",
+      "mycursus",
+      "mydocuments",
+      "mymarks",
+      "student"
+    ],
+    "support": "override",
+    "evidence": "discovered_route"
+  },
+  {
+    "route": "BO\\FilterPanel\\FilterPanel::clear_all_filters",
+    "pages": [
+      "home",
+      "mychoices",
+      "mycursus",
+      "mydocuments",
+      "mymarks",
+      "student"
+    ],
+    "support": "override",
+    "evidence": "discovered_route"
+  },
+  {
+    "route": "BO\\FilterPanel\\FilterPanel::delete_config",
+    "pages": [
+      "home",
+      "mychoices",
+      "mycursus",
+      "mydocuments",
+      "mymarks",
+      "student"
+    ],
+    "support": "override",
+    "evidence": "discovered_route"
+  },
+  {
+    "route": "BO\\FilterPanel\\FilterPanel::load",
+    "pages": [
+      "home",
+      "mychoices",
+      "mycursus",
+      "mydocuments",
+      "mymarks",
+      "student"
+    ],
+    "support": "override",
+    "evidence": "discovered_route"
+  },
+  {
+    "route": "BO\\FilterPanel\\FilterPanel::load_config",
+    "pages": [
+      "home",
+      "mychoices",
+      "mycursus",
+      "mydocuments",
+      "mymarks",
+      "student"
+    ],
+    "support": "override",
+    "evidence": "discovered_route"
+  },
+  {
+    "route": "BO\\FilterPanel\\FilterPanel::save_config",
+    "pages": [
+      "home",
+      "mychoices",
+      "mycursus",
+      "mydocuments",
+      "mymarks",
+      "student"
+    ],
+    "support": "override",
+    "evidence": "discovered_route"
+  },
+  {
+    "route": "BO\\FilterSelect\\AbstractFilterSelect::load",
+    "pages": [
+      "home",
+      "mychoices",
+      "mycursus",
+      "mydocuments",
+      "mymarks",
+      "student"
+    ],
+    "support": "override",
+    "evidence": "discovered_route"
+  },
+  {
+    "route": "BO\\FilterSelect\\AbstractFilterSelect::load_value",
+    "pages": [
+      "home",
+      "mychoices",
+      "mycursus",
+      "mydocuments",
+      "mymarks",
+      "student"
+    ],
+    "support": "override",
+    "evidence": "discovered_route"
+  },
+  {
+    "route": "BO\\Form\\Form::load_custom_area",
+    "pages": [
+      "home",
+      "mychoices",
+      "mycursus",
+      "mydocuments",
+      "mymarks",
+      "student"
+    ],
+    "support": "override",
+    "evidence": "discovered_route"
+  },
+  {
+    "route": "BO\\Form\\FormField\\AbstractUpdatableFormField::load_popover",
+    "pages": [
+      "home",
+      "mychoices",
+      "mycursus",
+      "mydocuments",
+      "mymarks",
+      "student"
+    ],
+    "support": "override",
+    "evidence": "discovered_route"
+  },
+  {
+    "route": "BO\\Form\\FormField\\Upload\\AbstractUploadField::delete",
+    "pages": [
+      "home",
+      "mychoices",
+      "mycursus",
+      "mydocuments",
+      "mymarks",
+      "student"
+    ],
+    "support": "override",
+    "evidence": "discovered_route"
+  },
+  {
+    "route": "BO\\Form\\FormField\\Upload\\AbstractUploadField::download",
+    "pages": [
+      "home",
+      "mychoices",
+      "mycursus",
+      "mydocuments",
+      "mymarks",
+      "student"
+    ],
+    "support": "simulated",
+    "evidence": "discovered_route"
+  },
+  {
+    "route": "BO\\Form\\FormField\\Upload\\AbstractUploadField::reload",
+    "pages": [
+      "home",
+      "mychoices",
+      "mycursus",
+      "mydocuments",
+      "mymarks",
+      "student"
+    ],
+    "support": "simulated",
+    "evidence": "discovered_route"
+  },
+  {
+    "route": "BO\\Form\\FormField\\Upload\\AbstractUploadField::upload",
+    "pages": [
+      "home",
+      "mychoices",
+      "mycursus",
+      "mydocuments",
+      "mymarks",
+      "student"
+    ],
+    "support": "override",
+    "evidence": "discovered_route"
+  },
+  {
+    "route": "BO\\Form\\InsertParent::insert_parent",
+    "pages": [
+      "home",
+      "mychoices",
+      "mycursus",
+      "mydocuments",
+      "mymarks",
+      "student"
+    ],
+    "support": "override",
+    "evidence": "discovered_route"
+  },
+  {
+    "route": "BO\\Form\\NestedForm::cancel",
+    "pages": [
+      "home",
+      "mychoices",
+      "mycursus",
+      "mydocuments",
+      "mymarks",
+      "student"
+    ],
+    "support": "override",
+    "evidence": "discovered_route"
+  },
+  {
+    "route": "BO\\Form\\NestedForm::edit_mode",
+    "pages": [
+      "home",
+      "mychoices",
+      "mycursus",
+      "mydocuments",
+      "mymarks",
+      "student"
+    ],
+    "support": "override",
+    "evidence": "discovered_route"
+  },
+  {
+    "route": "BO\\Form\\NestedForm::rank",
+    "pages": [
+      "home",
+      "mychoices",
+      "mycursus",
+      "mydocuments",
+      "mymarks",
+      "student"
+    ],
+    "support": "override",
+    "evidence": "discovered_route"
+  },
+  {
+    "route": "BO\\Form\\NestedForm::save",
+    "pages": [
+      "home",
+      "mychoices",
+      "mycursus",
+      "mydocuments",
+      "mymarks",
+      "student"
+    ],
+    "support": "override",
+    "evidence": "discovered_route"
+  },
+  {
+    "route": "BO\\Form\\NestedForm::spit_child_form",
+    "pages": [
+      "home",
+      "mychoices",
+      "mycursus",
+      "mydocuments",
+      "mymarks",
+      "student"
+    ],
+    "support": "override",
+    "evidence": "discovered_route"
+  },
+  {
+    "route": "BO\\Layout\\MainContent::load",
+    "pages": [
+      "home",
+      "mychoices",
+      "mycursus",
+      "mydocuments",
+      "mymarks",
+      "student"
+    ],
+    "support": "simulated",
+    "evidence": "discovered_route"
+  },
+  {
+    "route": "BO\\Layout\\Menu::reload",
+    "pages": [
+      "home",
+      "mychoices",
+      "mycursus",
+      "mydocuments",
+      "mymarks",
+      "student"
+    ],
+    "support": "simulated",
+    "evidence": "discovered_route"
+  },
+  {
+    "route": "BO\\Record\\Record::switch",
+    "pages": [
+      "home",
+      "mychoices",
+      "mycursus",
+      "mydocuments",
+      "mymarks",
+      "student"
+    ],
+    "support": "override",
+    "evidence": "discovered_route"
+  },
+  {
+    "route": "BO\\Router\\EventSource\\ServerOperationFactory::process",
+    "pages": [
+      "mycursus",
+      "mydocuments",
+      "student"
+    ],
+    "support": "override",
+    "evidence": "discovered_route"
+  },
+  {
+    "route": "BO\\Router\\Popup\\PopupRouter::reload",
+    "pages": [
+      "public_login"
+    ],
+    "support": "override",
+    "evidence": "discovered_route"
+  },
+  {
+    "route": "BO\\Spreadsheet\\ColumnConfig::delete",
+    "pages": [
+      "home",
+      "mychoices",
+      "mycursus",
+      "mydocuments",
+      "mymarks",
+      "student"
+    ],
+    "support": "override",
+    "evidence": "discovered_route"
+  },
+  {
+    "route": "BO\\Spreadsheet\\ColumnConfigs::load",
+    "pages": [
+      "home",
+      "mychoices",
+      "mycursus",
+      "mydocuments",
+      "mymarks",
+      "student"
+    ],
+    "support": "override",
+    "evidence": "discovered_route"
+  },
+  {
+    "route": "BO\\Spreadsheet\\ColumnConfigs::reset",
+    "pages": [
+      "home",
+      "mychoices",
+      "mycursus",
+      "mydocuments",
+      "mymarks",
+      "student"
+    ],
+    "support": "override",
+    "evidence": "discovered_route"
+  },
+  {
+    "route": "BO\\Spreadsheet\\ColumnConfigs::save",
+    "pages": [
+      "home",
+      "mychoices",
+      "mycursus",
+      "mydocuments",
+      "mymarks",
+      "student"
+    ],
+    "support": "override",
+    "evidence": "discovered_route"
+  },
+  {
+    "route": "BO\\Spreadsheet\\ColumnConfigs::set_column",
+    "pages": [
+      "home",
+      "mychoices",
+      "mycursus",
+      "mydocuments",
+      "mymarks",
+      "student"
+    ],
+    "support": "override",
+    "evidence": "discovered_route"
+  },
+  {
+    "route": "BO\\Spreadsheet\\ColumnConfigs::update_active_config",
+    "pages": [
+      "home",
+      "mychoices",
+      "mycursus",
+      "mydocuments",
+      "mymarks",
+      "student"
+    ],
+    "support": "override",
+    "evidence": "discovered_route"
+  },
+  {
+    "route": "BO\\Spreadsheet\\Import\\GlobalImport::upload",
+    "pages": [
+      "home",
+      "mychoices",
+      "mycursus",
+      "mydocuments",
+      "mymarks",
+      "student"
+    ],
+    "support": "override",
+    "evidence": "discovered_route"
+  },
+  {
+    "route": "BO\\Spreadsheet\\MassOperation\\AbstractMassOperation::load_panel",
+    "pages": [
+      "mycursus",
+      "mydocuments",
+      "student"
+    ],
+    "support": "override",
+    "evidence": "discovered_route"
+  },
+  {
+    "route": "BO\\Spreadsheet\\Spreadsheet::filter_from_header_field",
+    "pages": [
+      "home",
+      "mychoices",
+      "mycursus",
+      "mydocuments",
+      "mymarks",
+      "student"
+    ],
+    "support": "override",
+    "evidence": "discovered_route"
+  },
+  {
+    "route": "BO\\Spreadsheet\\Spreadsheet::load",
+    "pages": [
+      "home",
+      "mychoices",
+      "mycursus",
+      "mydocuments",
+      "mymarks",
+      "student"
+    ],
+    "support": "override",
+    "evidence": "discovered_route"
+  },
+  {
+    "route": "BO\\Spreadsheet\\Spreadsheet::load_header_title_popover",
+    "pages": [
+      "home",
+      "mychoices",
+      "mycursus",
+      "mydocuments",
+      "mymarks",
+      "student"
+    ],
+    "support": "override",
+    "evidence": "discovered_route"
+  },
+  {
+    "route": "BO\\Spreadsheet\\Spreadsheet::rank",
+    "pages": [
+      "home",
+      "mychoices",
+      "mycursus",
+      "mydocuments",
+      "mymarks",
+      "student"
+    ],
+    "support": "override",
+    "evidence": "discovered_route"
+  },
+  {
+    "route": "BO\\Spreadsheet\\Spreadsheet::remove_filters",
+    "pages": [
+      "home",
+      "mychoices",
+      "mycursus",
+      "mydocuments",
+      "mymarks",
+      "student"
+    ],
+    "support": "override",
+    "evidence": "discovered_route"
+  },
+  {
+    "route": "Oasis\\Common\\Custom\\Common\\FormAction\\AbstractActionCopyToAnotherYear::copy",
+    "pages": [
+      "mycursus",
+      "mydocuments",
+      "student"
+    ],
+    "support": "override",
+    "evidence": "discovered_route"
+  },
+  {
+    "route": "Oasis\\Common\\Custom\\Common\\FormAction\\AbstractActionCopyToAnotherYear::exists",
+    "pages": [
+      "mycursus",
+      "mydocuments",
+      "student"
+    ],
+    "support": "override",
+    "evidence": "discovered_route"
+  },
+  {
+    "route": "Oasis\\Common\\Model\\Cursus\\Choice\\StudentChoices::choose_bloc",
+    "pages": [
+      "mychoices"
+    ],
+    "support": "override",
+    "evidence": "discovered_route"
+  },
+  {
+    "route": "Oasis\\Common\\Model\\Cursus\\Choice\\StudentChoices::choose_course",
+    "pages": [
+      "mychoices"
+    ],
+    "support": "override",
+    "evidence": "discovered_route"
+  },
+  {
+    "route": "Oasis\\Common\\Model\\Cursus\\Choice\\StudentChoices::choose_module",
+    "pages": [
+      "mychoices"
+    ],
+    "support": "override",
+    "evidence": "discovered_route"
+  },
+  {
+    "route": "Oasis\\Common\\Model\\Cursus\\Choice\\StudentChoices::popup_validate",
+    "pages": [
+      "mychoices"
+    ],
+    "support": "override",
+    "evidence": "discovered_route"
+  },
+  {
+    "route": "Oasis\\Common\\Model\\Cursus\\Choice\\StudentChoices::validate",
+    "pages": [
+      "mychoices"
+    ],
+    "support": "override",
+    "evidence": "discovered_route"
+  },
+  {
+    "route": "Oasis\\Common\\Model\\Cursus\\StudentCursus\\CourseColumn\\Exempt::add",
+    "pages": [
+      "mymarks"
+    ],
+    "support": "override",
+    "evidence": "discovered_route"
+  },
+  {
+    "route": "Oasis\\Common\\Model\\Cursus\\StudentCursus\\CourseColumn\\Exempt::remove",
+    "pages": [
+      "mymarks"
+    ],
+    "support": "override",
+    "evidence": "discovered_route"
+  },
+  {
+    "route": "Oasis\\Common\\Model\\Cursus\\StudentCursus\\StudentCursus::get_ranking",
+    "pages": [
+      "mymarks"
+    ],
+    "support": "simulated",
+    "evidence": "captured_read"
+  },
+  {
+    "route": "Oasis\\Common\\Model\\Cursus\\StudentCursus\\StudentCursus::reload_semester",
+    "pages": [
+      "mymarks"
+    ],
+    "support": "simulated",
+    "evidence": "captured_read"
+  },
+  {
+    "route": "Oasis\\PolytechParis\\Override\\Connection\\LoginPage::password_forgot",
+    "pages": [
+      "public_login",
+      "public_password_forgot"
+    ],
+    "support": "simulated",
+    "evidence": "discovered_route"
+  },
+  {
+    "route": "Oasis\\PolytechParis\\Page\\Student\\MyChoices::load",
+    "pages": [
+      "mychoices"
+    ],
+    "support": "simulated",
+    "evidence": "captured_read"
+  }
+]

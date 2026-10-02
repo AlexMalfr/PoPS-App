@@ -1,0 +1,397 @@
+{
+  "STUDENT": {
+    "sections": [
+      {
+        "title": "Identifiants",
+        "fields": [
+          {
+            "field_name": "CODE_LDAP",
+            "label": "Identifiant LDAP",
+            "value": ""
+          },
+          {
+            "field_name": "STUDENT_CARD_NUMBER",
+            "label": "Numéro de carte étudiant",
+            "value": ""
+          },
+          {
+            "field_name": "INE",
+            "label": "INE",
+            "value": ""
+          },
+          {
+            "field_name": "GRANT_ID",
+            "label": "Numéro de boursier",
+            "value": ""
+          }
+        ]
+      },
+      {
+        "title": "Principales informations personnelles",
+        "fields": [
+          {
+            "field_name": "LNAME",
+            "label": "Nom usuel",
+            "value": ""
+          },
+          {
+            "field_name": "FNAME",
+            "label": "Prénom usuel",
+            "value": ""
+          },
+          {
+            "field_name": "MAIL",
+            "label": "Email PSud",
+            "value": ""
+          },
+          {
+            "field_name": "MAIL_PERSO",
+            "label": "Email personnel",
+            "value": ""
+          },
+          {
+            "field_name": "MOBILE",
+            "label": "Tél. portable",
+            "value": ""
+          },
+          {
+            "field_name": "ADDRESS",
+            "label": "Adresse",
+            "value": ""
+          },
+          {
+            "field_name": "ADDRESS2",
+            "label": "Adresse ligne 2",
+            "value": ""
+          },
+          {
+            "field_name": "ADDRESS3",
+            "label": "Adresse ligne 3",
+            "value": ""
+          },
+          {
+            "field_name": "ZIP",
+            "label": "Code postal",
+            "value": ""
+          },
+          {
+            "field_name": "CITY",
+            "label": "Ville",
+            "value": ""
+          }
+        ]
+      },
+      {
+        "title": "En cas d'urgence",
+        "fields": [
+          {
+            "field_name": "EMERGENCY",
+            "label": "Nom du contact",
+            "value": ""
+          },
+          {
+            "field_name": "EMERGENCY_TYPE",
+            "label": "Lien avec l'élève",
+            "value": ""
+          },
+          {
+            "field_name": "EMERGENCY_PHONE",
+            "label": "Tél. portable",
+            "value": ""
+          }
+        ]
+      },
+      {
+        "title": "Vos fichiers personnels",
+        "fields": [
+          {
+            "field_name": "PHOTO",
+            "label": "Photo",
+            "value": ""
+          },
+          {
+            "field_name": "CV",
+            "label": "CV",
+            "value": ""
+          },
+          {
+            "field_name": "GRANT_SALARIED",
+            "label": "Élève salarié ?",
+            "value": ""
+          },
+          {
+            "field_name": "NB_HOUR_WEEK",
+            "label": "Nombre d'heures hebdomadaires",
+            "value": ""
+          },
+          {
+            "field_name": "EMPLOYMENT_CONTRACT",
+            "label": "Contrat de travail",
+            "value": ""
+          }
+        ]
+      },
+      {
+        "title": "Handicap",
+        "fields": [
+          {
+            "field_name": "SPECIAL_PLANNING_TYPE",
+            "label": "Aménagement particulier",
+            "value": ""
+          },
+          {
+            "field_name": "SPECIAL_PLANNING_LIMIT",
+            "label": "Date limite de l'aménagement",
+            "value": ""
+          },
+          {
+            "field_name": "HANDICAP_FILE_1",
+            "label": "Fichier handicap 1",
+            "value": ""
+          },
+          {
+            "field_name": "HANDICAP_FILE_2",
+            "label": "Fichier handicap 2",
+            "value": ""
+          },
+          {
+            "field_name": "HANDICAP_FILE_3",
+            "label": "Fichier handicap 3",
+            "value": ""
+          },
+          {
+            "field_name": "HANDICAP_FILE_4",
+            "label": "Fichier handicap 4",
+            "value": ""
+          },
+          {
+            "field_name": "HANDICAP_FILE_5",
+            "label": "Fichier handicap 5",
+            "value": ""
+          }
+        ]
+      },
+      {
+        "title": "Consentements",
+        "fields": [
+          {
+            "field_name": "ACCEPT_RULE_MCC",
+            "label": "A pris connaissance du règlement des études et des MCCs",
+            "value": ""
+          },
+          {
+            "field_name": "ACCEPT_PHOTO_TROMBI",
+            "label": "A consenti à la prise de vue pour les trombinoscopes",
+            "value": ""
+          },
+          {
+            "field_name": "ACCEPT_PHOTO_EXTERNAL_COM",
+            "label": "A consenti à la prise de vue pour la communication externe",
+            "value": ""
+          },
+          {
+            "field_name": "ACCEPT_FABLAB_CHARTER",
+            "label": "A accepté la charte d'utilisation du FabLab",
+            "value": ""
+          },
+          {
+            "field_name": "ACCEPT_GOOD_BEHAVIOR",
+            "label": "A pris connaissance de la charte Bonne Conduite",
+            "value": ""
+          },
+          {
+            "field_name": "ACCEPT_DDRS",
+            "label": "Démarche DDRS : renonce à l'impression des poly",
+            "value": ""
+          }
+        ]
+      }
+    ],
+    "nested_tables": []
+  },
+  "MYCURSUS": {
+    "sections": [
+      {
+        "title": "Informations pour la fin de cursus",
+        "fields": [
+          {
+            "field_name": "CURSUS_ACADEMIC",
+            "label": "Cursus académique validé",
+            "value": ""
+          },
+          {
+            "field_name": "FINAL_SCORE",
+            "label": "Résultat final",
+            "value": ""
+          },
+          {
+            "field_name": "CURSUS_COMMENT",
+            "label": "Commentaires",
+            "value": ""
+          }
+        ]
+      },
+      {
+        "title": "Sur l'année courante",
+        "fields": [
+          {
+            "field_name": "DOUBLE",
+            "label": "Redoublant",
+            "value": ""
+          },
+          {
+            "field_name": "LEARNING_AGREEMENT_DOWNLOAD",
+            "label": "Contrat pédagogique",
+            "value": ""
+          },
+          {
+            "field_name": "FILE_RESERVED_2",
+            "label": "Dernier relevé de notes",
+            "value": ""
+          },
+          {
+            "field_name": "FILE_EXTERN_MARKS",
+            "label": "Notes externes",
+            "value": ""
+          },
+          {
+            "field_name": "YEAR_JURY_DECISION",
+            "label": "Décision du jury pour l'année",
+            "value": ""
+          },
+          {
+            "field_name": "YEAR_COMMENT",
+            "label": "Commentaires",
+            "value": ""
+          }
+        ]
+      },
+      {
+        "title": "Semestre impair",
+        "fields": [
+          {
+            "field_name": "S1_COMMENT",
+            "label": "Commentaires",
+            "value": ""
+          },
+          {
+            "field_name": "S1_JURY_DECISION",
+            "label": "Décision du jury pour le semestre impair",
+            "value": ""
+          }
+        ]
+      },
+      {
+        "title": "Semestre pair",
+        "fields": [
+          {
+            "field_name": "S2_COMMENT",
+            "label": "Commentaires",
+            "value": ""
+          },
+          {
+            "field_name": "S2_JURY_DECISION",
+            "label": "Décision du jury pour le semestre pair",
+            "value": ""
+          }
+        ]
+      }
+    ],
+    "nested_tables": [
+      {
+        "title": "Synthèse de quitus",
+        "nested_table_name": "QUITUS_RECAP",
+        "headers": [
+          "Type",
+          "Score",
+          "Usage",
+          "Seuil",
+          "Statut"
+        ],
+        "rows": []
+      },
+      {
+        "title": "Semestre pair",
+        "nested_table_name": "POLYTECH_SCHOLAR_BACKGROUND",
+        "headers": [
+          "Année",
+          "Code ETP",
+          "Filière",
+          "Spécialité",
+          "Décision du jury/année",
+          "Résultat final"
+        ],
+        "rows": []
+      }
+    ]
+  },
+  "MYDOCUMENTS": {
+    "sections": [
+      {
+        "title": "Diplôme",
+        "fields": [
+          {
+            "field_name": "DIPLOMA",
+            "label": "Attestation de diplôme / diplôme",
+            "value": ""
+          },
+          {
+            "field_name": "FILE_RESERVED_3",
+            "label": "Supplément au diplôme",
+            "value": ""
+          }
+        ]
+      },
+      {
+        "title": "Relevé de note PEIP",
+        "fields": [
+          {
+            "field_name": "GRADEBOOK_PEIP_1",
+            "label": "Relevé de notes PEIP 1ère année",
+            "value": ""
+          },
+          {
+            "field_name": "GRADEBOOK_PEIP_2",
+            "label": "Relevé de notes PEIP 2ème année",
+            "value": ""
+          }
+        ]
+      },
+      {
+        "title": "Relevé de note cycle ingénieur",
+        "fields": [
+          {
+            "field_name": "GRADEBOOK_IC_3",
+            "label": "Relevé de notes cycle ingénieur 3ème année",
+            "value": ""
+          },
+          {
+            "field_name": "GRADEBOOK_IC_4",
+            "label": "Relevé de notes cycle ingénieur 4ème année",
+            "value": ""
+          },
+          {
+            "field_name": "GRADEBOOK_IC_5",
+            "label": "Relevé de notes cycle ingénieur 5ème année",
+            "value": ""
+          }
+        ]
+      },
+      {
+        "title": "Consentements",
+        "fields": [
+          {
+            "field_name": "DOCUMENT_TO_COMMIT",
+            "label": "Documents",
+            "value": ""
+          }
+        ]
+      }
+    ],
+    "nested_tables": []
+  },
+  "HOME": {
+    "sections": [],
+    "nested_tables": []
+  }
+}
