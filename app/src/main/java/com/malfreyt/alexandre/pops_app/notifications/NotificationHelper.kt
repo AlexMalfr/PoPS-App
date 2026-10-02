@@ -34,6 +34,17 @@ object NotificationHelper {
     private const val PREVIEW_NOTIFICATION_ID_BASE = 40_000
     private const val FAILURE_NOTIFICATION_ID_BASE = 10_000
 
+    fun systemState(context: Context, accountId: String): SystemNotificationState {
+        val manager = context.getSystemService(NotificationManager::class.java)
+        val appEnabled = canNotify(context) && NotificationManagerCompat.from(context).areNotificationsEnabled()
+        val accountEnabled = Build.VERSION.SDK_INT < Build.VERSION_CODES.P ||
+            manager.getNotificationChannelGroup(groupIdFor(accountId))?.isBlocked != true
+        val blockedTypes = GradeNotificationKind.entries.filter { kind ->
+            manager.getNotificationChannel(channelIdFor(kind, accountId))?.importance == NotificationManager.IMPORTANCE_NONE
+        }.map { it.accountType }.toSet()
+        return SystemNotificationState(appEnabled, accountEnabled, blockedTypes)
+    }
+
     fun createChannel(context: Context, settings: AppSettings = SettingsStore(context).readSettings()) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
             return

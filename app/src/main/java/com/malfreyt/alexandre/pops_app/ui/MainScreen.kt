@@ -91,6 +91,10 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -1670,6 +1674,19 @@ private fun NotificationSettingsCard(
 ) {
     val context = LocalContext.current
     val selectedAccount = state.savedSettings.selectedAccountOrNull()
+    val lifecycleOwner = LocalLifecycleOwner.current
+    var systemState by remember(context, selectedAccount?.id) {
+        mutableStateOf(NotificationHelper.systemState(context, selectedAccount?.id.orEmpty()))
+    }
+    DisposableEffect(context, lifecycleOwner, selectedAccount?.id) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                systemState = NotificationHelper.systemState(context, selectedAccount?.id.orEmpty())
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
     val multipleAccounts = state.savedSettings.accounts.count(OasisAccount::hasCredentials) > 1
     val grades = state.grades
     val currentYear = state.selectedYear ?: currentAcademicYear()
@@ -1705,12 +1722,15 @@ private fun NotificationSettingsCard(
                     checked = account.notificationsEnabled,
                     onCheckedChange = viewModel::updateNotificationsEnabled,
                     switchModifier = Modifier.testTag("notifications_master_switch"),
+                    enabled = systemState.masterEnabled,
                 )
                 if (account.notificationsEnabled) {
                     NotificationToggleWithTest(
                         title = stringResource(R.string.notifications_new_title),
                         subtitle = stringResource(R.string.notifications_new_body),
                         checked = account.notifyNewGrades,
+                        enabled = systemState.isEnabled(AccountNotificationType.NEW),
+                        testTag = "notifications_new_switch",
                         onCheckedChange = viewModel::updateNotifyNewGrades,
                         onTest = {
                             NotificationHelper.notifyPreview(
@@ -1730,6 +1750,8 @@ private fun NotificationSettingsCard(
                         title = stringResource(R.string.notifications_pending_title),
                         subtitle = stringResource(R.string.notifications_pending_body),
                         checked = account.notifyPendingGrades,
+                        enabled = systemState.isEnabled(AccountNotificationType.PENDING),
+                        testTag = "notifications_pending_switch",
                         onCheckedChange = viewModel::updateNotifyPendingGrades,
                         onTest = {
                             NotificationHelper.notifyPreview(
@@ -1749,6 +1771,8 @@ private fun NotificationSettingsCard(
                         title = stringResource(R.string.notifications_updated_title),
                         subtitle = stringResource(R.string.notifications_updated_body),
                         checked = account.notifyUpdatedGrades,
+                        enabled = systemState.isEnabled(AccountNotificationType.UPDATED),
+                        testTag = "notifications_updated_switch",
                         onCheckedChange = viewModel::updateNotifyUpdatedGrades,
                         onTest = {
                             NotificationHelper.notifyPreview(
@@ -1768,6 +1792,8 @@ private fun NotificationSettingsCard(
                         title = stringResource(R.string.notifications_errors_title),
                         subtitle = stringResource(R.string.notifications_errors_body),
                         checked = account.notifyErrors,
+                        enabled = systemState.isEnabled(AccountNotificationType.ERROR),
+                        testTag = "notifications_error_switch",
                         onCheckedChange = viewModel::updateNotifyErrors,
                         onTest = {
                             NotificationHelper.notifyPreview(
@@ -1778,26 +1804,27 @@ private fun NotificationSettingsCard(
                         },
                     )
 
-                    HorizontalDivider()
-
-                    OutlinedButton(onClick = {
-                        runCatching {
-                            context.startActivity(
-                                Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
-                                    putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
-                                }
-                            )
-                        }
-                    }) {
-                        Icon(Icons.Filled.Notifications, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(stringResource(R.string.notifications_system_settings_action))
+                }
+                HorizontalDivider()
+                val blockedMessage = when {
+                    !systemState.appEnabled -> R.string.notifications_system_app_blocked
+                    !systemState.accountEnabled -> R.string.notifications_system_account_blocked
+                    systemState.blockedTypes.isNotEmpty() -> R.string.notifications_system_categories_blocked
+                    else -> null
+                }
+                blockedMessage?.let {
+                    Text(stringResource(it), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                OutlinedButton(onClick = {
+                    runCatching {
+                        context.startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                            putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                        })
                     }
-                    Text(
-                        stringResource(R.string.notifications_system_settings_body),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                }) {
+                    Icon(Icons.Filled.Notifications, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(stringResource(R.string.notifications_system_settings_action))
                 }
             }
         }
@@ -1811,6 +1838,8 @@ private fun NotificationToggleWithTest(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
     onTest: () -> Unit,
+    enabled: Boolean,
+    testTag: String,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -1818,13 +1847,13 @@ private fun NotificationToggleWithTest(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(title)
-            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(title, color = MaterialTheme.colorScheme.onSurface.copy(alpha = if (enabled) 1f else 0.38f))
+            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (enabled) 1f else 0.38f))
         }
-        TextButton(onClick = onTest, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)) {
+        TextButton(onClick = onTest, enabled = enabled, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)) {
             Text(stringResource(R.string.notifications_test_action), style = MaterialTheme.typography.labelSmall)
         }
-        Switch(checked = checked, onCheckedChange = onCheckedChange)
+        Switch(checked = checked, onCheckedChange = onCheckedChange, enabled = enabled, modifier = Modifier.testTag(testTag))
     }
 }
 
@@ -1959,6 +1988,7 @@ private fun SettingToggleRow(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
     switchModifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -1972,7 +2002,7 @@ private fun SettingToggleRow(
                 Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
         }
-        Switch(checked = checked, onCheckedChange = onCheckedChange, modifier = switchModifier)
+        Switch(checked = checked, onCheckedChange = onCheckedChange, modifier = switchModifier, enabled = enabled)
     }
 }
 

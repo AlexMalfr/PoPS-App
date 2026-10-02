@@ -184,7 +184,6 @@
     <string name="account_settings_scope">Applies to account %1$s</string>
     <string name="notifications_test_action">Test</string>
     <string name="notifications_system_settings_action">Open system notification settings</string>
-    <string name="notifications_system_settings_body">Use the system notification settings to fine-tune channel importance, sound, vibration, and account-specific categories.</string>
     <string name="notification_preview_subject">Mathematics</string>
     <string name="notification_preview_grade_name">Assessment %1$s</string>
     <string name="notification_preview_fallback_name">Assessment #%1$d</string>
@@ -242,4 +241,7 @@
     <string name="error_server_url">Enter a valid HTTP(S) server URL without credentials, query or fragment.</string>
     <string name="dialog_cancel">Cancel</string>
     <string name="error_oasis_auth_warning">Your account may not be activated yet, or access to Oasis may be temporarily closed.</string>
+    <string name="notifications_system_app_blocked">Notifications are blocked by Android. Enable them in system settings.</string>
+    <string name="notifications_system_account_blocked">Notifications for this account are blocked by Android.</string>
+    <string name="notifications_system_categories_blocked">Some categories are blocked by Android. Enable them in system settings.</string>
 </resources>

@@ -128,6 +128,7 @@
     - [x] In the "about" section
 
 ### Notification settings section
+  - [x] Disable controls blocked by Android app, account group or channel settings; refresh on return and show a short explanation above the system settings button
   - [x] Add options to configure which notifications the user wants to receive (new grades, updated grades, sync errors, etc.)
   - [x] Make notifications settings saved per account
     - [x] Make it clear in the settings UI
