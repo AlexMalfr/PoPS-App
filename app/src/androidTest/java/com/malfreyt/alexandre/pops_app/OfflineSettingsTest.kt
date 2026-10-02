@@ -12,6 +12,11 @@ import com.malfreyt.alexandre.pops_app.data.AppContainer
 import com.malfreyt.alexandre.pops_app.data.AppSettings
 import com.malfreyt.alexandre.pops_app.data.OasisAccount
 import com.malfreyt.alexandre.pops_app.sync.SyncScheduler
+import androidx.work.NetworkType
+import androidx.work.WorkInfo
+import androidx.work.WorkManager
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKey
 import com.malfreyt.alexandre.pops_app.ui.MainViewModel
 import java.io.File
 import java.net.ServerSocket
@@ -84,11 +89,15 @@ class OfflineSettingsTest {
         serverThread.join(1000)
         val manager = appContext.getSystemService(NotificationManager::class.java)
         manager.cancel(notificationId)
-        listOf("new", "pending", "updated", "errors").forEach {
-            manager.deleteNotificationChannel("grades_${it}_${account.id}")
+        listOf(account.id, "offline-settings-test-second").forEach { id ->
+            listOf("new", "pending", "updated", "errors").forEach {
+                manager.deleteNotificationChannel("grades_${it}_$id")
+            }
+            manager.deleteNotificationChannelGroup("grades_group_$id")
         }
-        manager.deleteNotificationChannelGroup("grades_group_${account.id}")
+        SyncScheduler.reschedule(container.appContext, AppSettings())
         appContext.deleteSharedPreferences("offline_settings_test_pops_secure_preferences")
+        appContext.deleteSharedPreferences("offline_settings_test_pops_sync_scheduler")
         File(appContext.cacheDir, "offline-settings-test").deleteRecursively()
         SyncScheduler.reschedule(appContext, (appContext.applicationContext as PoPSApplication).container.gradeRepository.readSettings())
     }
@@ -101,14 +110,14 @@ class OfflineSettingsTest {
             viewModel.saveSettings()
         }
         awaitOperation { !viewModel.uiState.value.isSaving }
-        assertEquals(0, container.gradeRepository.readSettings().pollingMinutes)
+        assertEquals(0, container.gradeRepository.readSettings().selectedAccountOrNull()!!.pollingMinutes)
         assertNull(viewModel.uiState.value.errorDialog)
         assertTrue(viewModel.uiState.value.draftSettings.editableEquals(viewModel.uiState.value.savedSettings))
         assertEquals("Saving preferences must not contact Oasis", 0, requests.get())
         awaitOperation { !hasFailureNotification() }
         assertFalse(container.gradeRepository.readSettings().selectedAccountOrNull()!!.failureNotificationActive)
         // Verify persistence by reopening the encrypted store.
-        assertEquals(0, AppContainer(container.appContext).gradeRepository.readSettings().pollingMinutes)
+        assertEquals(0, AppContainer(container.appContext).gradeRepository.readSettings().selectedAccountOrNull()!!.pollingMinutes)
     }
 
     @Test
@@ -169,15 +178,59 @@ class OfflineSettingsTest {
         }
         awaitOperation { !viewModel.uiState.value.isSaving }
         val saved = container.gradeRepository.readSettings()
-        assertEquals(60, saved.pollingMinutes)
+        assertEquals(60, saved.selectedAccountOrNull()!!.pollingMinutes)
         assertFalse(saved.selectedAccountOrNull()!!.notifyErrors)
         assertFalse(saved.selectedAccountOrNull()!!.notifyNewGrades)
         assertEquals(0, requests.get())
     }
 
+    @Test
+    fun syncPreferencesAndSchedulesAreIndependentPerAccount() {
+        val second = account.copy(id = "offline-settings-test-second", login = "second", studentId = "second", pollingMinutes = 360)
+        container.gradeRepository.saveAccount(second)
+        instrumentation.runOnMainSync {
+            viewModel.updateSyncUnmeteredOnly(true)
+            viewModel.updateSyncChargingOnly(true)
+            viewModel.updatePollingMinutes(60)
+        }
+        val manager = WorkManager.getInstance(appContext)
+        val firstWork = manager.getWorkInfosForUniqueWork(SyncScheduler.workName(account.id)).get().single { !it.state.isFinished }
+        val secondWork = manager.getWorkInfosForUniqueWork(SyncScheduler.workName(second.id)).get().single { !it.state.isFinished }
+        assertEquals(NetworkType.UNMETERED, firstWork.constraints.requiredNetworkType)
+        assertTrue(firstWork.constraints.requiresCharging())
+        assertEquals(60L * 60_000, firstWork.periodicityInfo!!.repeatIntervalMillis)
+        assertEquals(NetworkType.CONNECTED, secondWork.constraints.requiredNetworkType)
+        assertFalse(secondWork.constraints.requiresCharging())
+        assertEquals(360L * 60_000, secondWork.periodicityInfo!!.repeatIntervalMillis)
+        val reopened = AppContainer(container.appContext).gradeRepository.readSettings()
+        assertTrue(reopened.accounts.first { it.id == account.id }.syncChargingOnly)
+        assertFalse(reopened.accounts.first { it.id == second.id }.syncChargingOnly)
+        instrumentation.runOnMainSync { viewModel.updatePollingMinutes(0) }
+        assertTrue(manager.getWorkInfosForUniqueWork(SyncScheduler.workName(account.id)).get().all { it.state == WorkInfo.State.CANCELLED })
+        assertTrue(manager.getWorkInfosForUniqueWork(SyncScheduler.workName(second.id)).get().any { !it.state.isFinished })
+        assertEquals(0, requests.get())
+    }
+
+    @Test
+    fun legacyGlobalSyncPreferencesAreMigrated() {
+        val context = container.appContext
+        val key = MasterKey.Builder(context).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build()
+        val preferences = EncryptedSharedPreferences.create(context, "pops_secure_preferences", key,
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM)
+        preferences.edit().putString("settings_json_v2", """{"pollingMinutes":360,"accounts":[{"id":"legacy","login":"test","password":"test"}]}""").commit()
+        val migrated = AppContainer(context).gradeRepository.readSettings().selectedAccountOrNull()!!
+        assertEquals(360, migrated.pollingMinutes)
+        assertFalse(migrated.syncChargingOnly)
+        assertFalse(migrated.syncUnmeteredOnly)
+        preferences.edit().putString("settings_json_v2", """{"notificationsEnabled":false,"pollingMinutes":360,"accounts":[{"id":"legacy","login":"test","password":"test"}]}""").commit()
+        assertEquals(0, AppContainer(context).gradeRepository.readSettings().selectedAccountOrNull()!!.pollingMinutes)
+    }
+
     private fun seedFailureNotification() {
         com.malfreyt.alexandre.pops_app.notifications.NotificationHelper.createChannel(container.appContext, container.gradeRepository.readSettings())
         val manager = appContext.getSystemService(NotificationManager::class.java)
+        org.junit.Assume.assumeTrue("Notification permission is needed to exercise alert cancellation", manager.areNotificationsEnabled())
         manager.notify(notificationId, NotificationCompat.Builder(appContext, channelId)
             .setSmallIcon(android.R.drawable.stat_notify_error)
             .setContentTitle("PoPS regression test")

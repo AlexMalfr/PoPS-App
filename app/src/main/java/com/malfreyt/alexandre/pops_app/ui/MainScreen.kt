@@ -469,7 +469,7 @@ private fun SyncStatusSubtitle(
     val selectedAccount = settings.selectedAccountOrNull() ?: return
     val noInternetMessage = stringResource(R.string.error_no_internet)
     val hasError = selectedAccount.lastSyncError != null && selectedAccount.lastSyncError != noInternetMessage
-    val bgOff = settings.pollingMinutes == 0
+    val bgOff = selectedAccount.pollingMinutes == 0
     val lastSuccess = selectedAccount.lastSyncAt?.let { formatRelativeTime(it) }
 
     // Error row (clickable)
@@ -1295,7 +1295,6 @@ private fun SettingsPage(
         item { AccountSettingsCard(state = state, viewModel = viewModel) }
         item { SyncSettingsCard(state = state, viewModel = viewModel) }
         item { NotificationSettingsCard(state = state, viewModel = viewModel) }
-        item { AdvancedSettingsCard(state = state, viewModel = viewModel) }
         item { AboutCard() }
     }
 }
@@ -1631,30 +1630,59 @@ private fun SyncSettingsCard(
     state: MainUiState,
     viewModel: MainViewModel,
 ) {
-    val bgSyncEnabled = state.draftSettings.pollingMinutes > 0
+    val account = state.savedSettings.selectedAccountOrNull()
+    val bgSyncEnabled = account?.canSyncInBackground() == true
 
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Text(stringResource(R.string.settings_section_sync), style = MaterialTheme.typography.titleLarge)
 
-            SettingToggleRow(
-                icon = { Icon(Icons.Filled.Sync, contentDescription = null) },
-                title = stringResource(R.string.background_sync_title),
-                subtitle = stringResource(R.string.background_sync_body),
-                checked = bgSyncEnabled,
-                onCheckedChange = { enabled ->
-                    if (enabled) {
-                        viewModel.updatePollingMinutes(30) // default to 30 min when toggling on
-                    } else {
-                        viewModel.updatePollingMinutes(0) // manual
-                    }
-                },
-            )
-
-            if (bgSyncEnabled) {
-                PollingSlider(
-                    current = state.draftSettings.pollingMinutes,
-                    onChange = viewModel::updatePollingMinutes,
+            if (account == null) {
+                Text(stringResource(R.string.sync_settings_no_account))
+            } else {
+                Text(stringResource(R.string.account_settings_scope, account.resolvedDisplayName()), style = MaterialTheme.typography.bodySmall)
+                SettingToggleRow(
+                    icon = { Icon(Icons.Filled.Sync, contentDescription = null) },
+                    title = stringResource(R.string.background_sync_title),
+                    subtitle = stringResource(R.string.background_sync_body),
+                    checked = bgSyncEnabled,
+                    onCheckedChange = { viewModel.updatePollingMinutes(if (it) 30 else 0) },
+                )
+                if (bgSyncEnabled) {
+                    PollingSlider(current = account.pollingMinutes, onChange = viewModel::updatePollingMinutes)
+                }
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth().clickable(onClick = viewModel::toggleAdvancedSettings),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(stringResource(R.string.advanced_title), style = MaterialTheme.typography.bodyLarge)
+                Icon(if (state.advancedSettingsVisible) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore, contentDescription = null)
+            }
+            if (state.advancedSettingsVisible) {
+                if (account != null) {
+                    SettingToggleRow(
+                        icon = {},
+                        title = stringResource(R.string.sync_unmetered_title),
+                        subtitle = stringResource(R.string.sync_unmetered_body),
+                        checked = account.syncUnmeteredOnly,
+                        onCheckedChange = viewModel::updateSyncUnmeteredOnly,
+                    )
+                    SettingToggleRow(
+                        icon = {},
+                        title = stringResource(R.string.sync_charging_title),
+                        subtitle = stringResource(R.string.sync_charging_body),
+                        checked = account.syncChargingOnly,
+                        onCheckedChange = viewModel::updateSyncChargingOnly,
+                    )
+                }
+                SettingToggleRow(
+                    icon = {},
+                    title = stringResource(R.string.ignore_tls_title),
+                    subtitle = stringResource(R.string.ignore_tls_body),
+                    checked = state.draftSettings.ignoreTlsErrors,
+                    onCheckedChange = viewModel::updateIgnoreTlsErrors,
                 )
             }
         }
@@ -1683,7 +1711,7 @@ private fun NotificationSettingsCard(
 
             if (multipleAccounts && selectedAccount != null) {
                 Text(
-                    stringResource(R.string.notifications_scope_multi, selectedAccount.resolvedDisplayName()),
+                    stringResource(R.string.account_settings_scope, selectedAccount.resolvedDisplayName()),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -1827,28 +1855,6 @@ private fun NotificationToggleWithTest(
     }
 }
 
-// ── Advanced section ──
-
-@Composable
-private fun AdvancedSettingsCard(
-    state: MainUiState,
-    viewModel: MainViewModel,
-) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            Text(stringResource(R.string.advanced_title), style = MaterialTheme.typography.titleLarge)
-
-            SettingToggleRow(
-                icon = { Box(modifier = Modifier.size(24.dp)) },
-                title = stringResource(R.string.ignore_tls_title),
-                subtitle = stringResource(R.string.ignore_tls_body),
-                checked = state.draftSettings.ignoreTlsErrors,
-                onCheckedChange = viewModel::updateIgnoreTlsErrors,
-            )
-        }
-    }
-}
-
 // ── About section ──
 
 @Composable
@@ -1987,7 +1993,7 @@ private fun SettingToggleRow(
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(title)
             subtitle?.let {
-                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
         }
         Switch(checked = checked, onCheckedChange = onCheckedChange)

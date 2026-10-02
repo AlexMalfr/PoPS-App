@@ -58,7 +58,7 @@
     <string name="polling_6h">6 h</string>
     <string name="polling_1d">1 day</string>
     <string name="polling_1w">1 week</string>
-    <string name="advanced_title">Advanced options</string>
+    <string name="advanced_title">Advanced</string>
     <string name="ignore_tls_title">Ignore TLS errors</string>
     <string name="ignore_tls_body">Only for test environments with an untrusted certificate.</string>
     <string name="save_action">Save</string>
@@ -67,6 +67,10 @@
     <string name="dialog_hide_details">Hide technical details</string>
     <string name="dialog_technical_details">Technical details</string>
     <string name="settings_saved">Settings saved</string>
+    <string name="sync_settings_no_account">Add an Oasis account to configure background sync.</string>
+    <string name="sync_unmetered_title">Only on Wi-Fi</string>
+    <string name="sync_unmetered_body">Wi-Fi or another unmetered network.</string>
+    <string name="sync_charging_title">Only while charging</string>
     <string name="error_settings_title">Could not save settings</string>
     <string name="error_settings_message">The settings could not be saved locally.</string>
     <string name="settings_configure_before_sync">Configure Oasis in Settings before syncing.</string>
@@ -179,7 +183,7 @@
     <string name="account_updated">Account updated: %1$s</string>
     <string name="account_removed">Account removed: %1$s</string>
     <string name="account_already_exists">This account is already configured: %1$s</string>
-    <string name="notifications_scope_multi">These notification settings apply to %1$s.</string>
+    <string name="account_settings_scope">Applies to account %1$s</string>
     <string name="notifications_test_action">Test</string>
     <string name="notifications_system_settings_action">Open system notification settings</string>
     <string name="notifications_system_settings_body">Use the system notification settings to fine-tune channel importance, sound, vibration, and account-specific categories.</string>
@@ -235,4 +239,5 @@
     <string name="battery_dialog_action">Fix it</string>
     <string name="battery_dialog_dismiss">Not now</string>
     <string name="battery_dialog_learn_more">Why is this important? →</string>
+    <string name="sync_charging_body">Saves battery by syncing while charging.</string>
 </resources>

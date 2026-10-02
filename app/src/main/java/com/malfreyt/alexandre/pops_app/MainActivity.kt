@@ -64,7 +64,7 @@ class MainActivity : ComponentActivity() {
                     }
 
                     BatteryOptimizationEffect(
-                        backgroundSyncEnabled = state.savedSettings.pollingMinutes > 0 && state.savedSettings.hasAnySyncableAccount(),
+                        backgroundSyncEnabled = state.savedSettings.hasAnyBackgroundSyncAccount(),
                     )
 
                     MainScreen(viewModel = viewModel)

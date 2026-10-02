@@ -161,7 +161,16 @@ class MainViewModel(
 
     fun updateOasisUrl(value: String) = updateDraftSettings { copy(oasisBaseUrl = value) }
     fun updateIgnoreTlsErrors(value: Boolean) = updateDraftSettings { copy(ignoreTlsErrors = value) }
-    fun updatePollingMinutes(value: Int) = updateDraftSettings { copy(pollingMinutes = value) }
+    fun updatePollingMinutes(value: Int) = updateSelectedAccountSync { copy(pollingMinutes = value) }
+    fun updateSyncUnmeteredOnly(value: Boolean) = updateSelectedAccountSync { copy(syncUnmeteredOnly = value) }
+    fun updateSyncChargingOnly(value: Boolean) = updateSelectedAccountSync { copy(syncChargingOnly = value) }
+
+    private fun updateSelectedAccountSync(transform: OasisAccount.() -> OasisAccount) {
+        val account = repository.readSettings().selectedAccountOrNull() ?: return
+        repository.saveAccount(account.transform())
+        applyNotificationSettings()
+        SyncScheduler.reschedule(appContainer.appContext, repository.readSettings())
+    }
     fun updateNotificationsEnabled(value: Boolean) {
         val account = repository.readSettings().selectedAccountOrNull() ?: return
         val updated = account.copy(notificationsEnabled = value)
@@ -417,7 +426,7 @@ class MainViewModel(
         val settings = repository.readSettings()
         NotificationHelper.createChannel(appContainer.appContext, settings)
         settings.accounts.filter { account ->
-            settings.pollingMinutes == 0 || !settings.notificationsEnabled ||
+            !account.canSyncInBackground() ||
                 !account.isNotificationEnabled(AccountNotificationType.ERROR)
         }.forEach { account ->
             NotificationHelper.clearSyncFailureNotification(appContainer.appContext, account.id)

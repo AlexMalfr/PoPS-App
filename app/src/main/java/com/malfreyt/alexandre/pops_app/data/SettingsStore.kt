@@ -212,6 +212,7 @@ class SettingsStore(context: Context) {
                 defaultNotifyPendingGrades = json.optBoolean("notifyPendingGrades", true),
                 defaultNotifyUpdatedGrades = json.optBoolean("notifyUpdatedGrades", true),
                 defaultNotifyErrors = json.optBoolean("notifyErrors", true),
+                defaultPollingMinutes = if (json.optBoolean("notificationsEnabled", true)) json.optInt("pollingMinutes", 30) else 0,
             ),
             selectedAccountId = json.optString("selectedAccountId").takeIf { it.isNotBlank() },
             oasisBaseUrl = json.optString("oasisBaseUrl", DEFAULT_OASIS_BASE_URL).ifBlank { DEFAULT_OASIS_BASE_URL },
@@ -281,6 +282,9 @@ private fun OasisAccount.toJson(): JSONObject {
         .put("notifyUpdatedGrades", notifyUpdatedGrades)
         .put("notifyErrors", notifyErrors)
         .put("lastSyncAt", lastSyncAt)
+        .put("pollingMinutes", pollingMinutes)
+        .put("syncUnmeteredOnly", syncUnmeteredOnly)
+        .put("syncChargingOnly", syncChargingOnly)
         .put("lastSyncSummary", lastSyncSummary)
         .put("lastSyncError", lastSyncError)
         .put("lastSyncErrorDetails", lastSyncErrorDetails)
@@ -294,6 +298,7 @@ private fun JSONArray?.toAccounts(
     defaultNotifyPendingGrades: Boolean,
     defaultNotifyUpdatedGrades: Boolean,
     defaultNotifyErrors: Boolean,
+    defaultPollingMinutes: Int,
 ): List<OasisAccount> {
     if (this == null) {
         return emptyList()
@@ -314,6 +319,9 @@ private fun JSONArray?.toAccounts(
                     notifyPendingGrades = item.optBoolean("notifyPendingGrades", defaultNotifyPendingGrades),
                     notifyUpdatedGrades = item.optBoolean("notifyUpdatedGrades", defaultNotifyUpdatedGrades),
                     notifyErrors = item.optBoolean("notifyErrors", defaultNotifyErrors),
+                    pollingMinutes = item.optInt("pollingMinutes", defaultPollingMinutes),
+                    syncUnmeteredOnly = item.optBoolean("syncUnmeteredOnly", false),
+                    syncChargingOnly = item.optBoolean("syncChargingOnly", false),
                     lastSyncAt = item.optLong("lastSyncAt", 0L).takeIf { it > 0L },
                     lastSyncSummary = item.optString("lastSyncSummary").takeIf { it.isNotBlank() },
                     lastSyncError = item.optString("lastSyncError").takeIf { it.isNotBlank() },

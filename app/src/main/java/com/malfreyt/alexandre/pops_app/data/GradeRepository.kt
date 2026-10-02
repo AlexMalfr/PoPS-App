@@ -93,6 +93,8 @@ class GradeRepository(
         return syncAccount(selectedAccount.id, settings)
     }
 
+    suspend fun syncAccount(accountId: String): SyncReport = syncAccount(accountId, settingsStore.readSettings())
+
     suspend fun clearSelectedAccountCache() {
         val settings = settingsStore.readSettings()
         val selectedAccount = settings.selectedAccountOrNull() ?: return

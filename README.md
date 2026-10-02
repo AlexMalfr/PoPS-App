@@ -35,10 +35,10 @@ L'APK debug est généré dans `app\build\outputs\apk\debug\app-debug.apk`.
 2. Va dans `Réglages` puis ajoute un compte.
 3. Renseigne le login et le mot de passe Oasis. L'ajout ou la modification des identifiants teste la connexion avant d'enregistrer le compte.
 4. Choisis la fréquence de vérification et l'état des notifications.
-5. Ouvre `Avancé` uniquement si tu dois changer l'URL Oasis ou ignorer les erreurs TLS en test.
+5. Ouvre `URL du serveur` pour changer l’instance, ou `Synchro > Avancé` pour les conditions réseau/charge et les erreurs TLS.
 6. Appuie sur `Enregistrer` (la coche dans la barre haute) pour sauvegarder les autres réglages.
 
-Le bouton de sauvegarde est désactivé tant qu'il n'y a pas de changement. Les réglages généraux (synchro en arrière-plan, fréquence, URL et TLS) sont sauvegardés localement, même si Oasis est inaccessible. Les préférences de notifications par compte sont enregistrées immédiatement : désactiver les erreurs de synchro ou toutes les notifications du compte efface aussi l'alerte d'erreur en cours. Seul l'ajout ou la modification des identifiants d'un compte nécessite une connexion réussie à Oasis ; en cas d'échec, les identifiants précédents sont conservés et une boîte de dialogue affiche le détail technique.
+Le bouton de sauvegarde est désactivé tant qu'il n'y a pas de changement. L'URL et l'option TLS se sauvegardent localement, même si Oasis est inaccessible. Les préférences de synchro et de notifications sont enregistrées immédiatement pour le compte sélectionné. Chaque compte possède sa fréquence et ses conditions (réseau non facturé, charge), désactivées par défaut. Ces conditions concernent uniquement la synchro en arrière-plan : le rafraîchissement manuel reste disponible. Couper les notifications ne coupe pas la synchro. Désactiver les erreurs de synchro, toutes les notifications du compte ou sa synchro en arrière-plan efface l'alerte d'erreur en cours. Seul l'ajout ou la modification des identifiants d'un compte nécessite une connexion réussie à Oasis ; en cas d'échec, les identifiants précédents sont conservés. Lors de la mise à jour, les comptes existants reprennent l'ancienne fréquence globale et les restrictions réseau/charge restent désactivées.
 
 L'application remonte les années académiques passées jusqu'à rencontrer deux années consécutives sans notes, avec une borne de sécurité de 10 ans.
 

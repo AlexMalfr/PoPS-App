@@ -25,6 +25,9 @@ data class OasisAccount(
     val notifyPendingGrades: Boolean = true,
     val notifyUpdatedGrades: Boolean = true,
     val notifyErrors: Boolean = true,
+    val pollingMinutes: Int = 30,
+    val syncUnmeteredOnly: Boolean = false,
+    val syncChargingOnly: Boolean = false,
     val lastSyncAt: Long? = null,
     val lastSyncSummary: String? = null,
     val lastSyncError: String? = null,
@@ -36,6 +39,8 @@ data class OasisAccount(
     fun hasCredentials(): Boolean {
         return login.isNotBlank() && password.isNotBlank()
     }
+
+    fun canSyncInBackground(): Boolean = hasCredentials() && pollingMinutes > 0
 
     fun resolvedStudentId(): String {
         return studentId.ifBlank { login.trim() }
@@ -96,6 +101,9 @@ data class AppSettings(
     fun hasAnySyncableAccount(): Boolean {
         return accounts.any(OasisAccount::hasCredentials) && oasisBaseUrl.isNotBlank()
     }
+
+    fun hasAnyBackgroundSyncAccount(): Boolean =
+        oasisBaseUrl.isNotBlank() && accounts.any(OasisAccount::canSyncInBackground)
 
     fun editableEquals(other: AppSettings): Boolean {
         return oasisBaseUrl == other.oasisBaseUrl &&

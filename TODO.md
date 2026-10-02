@@ -136,8 +136,9 @@
 ### Sync settings section
   - [x] Add options to configure the sync frequency (manual, every 15m, every 30m, every 1h, every 6h, every 12h, every 1d, every 1w)
   - [x] Separate "Background sync" toggle from "Sync frequency" options, because it may not be clear that you have to slide the frequency all the way to "manual" to disable background sync
-  - [ ] Add conditions (only on Wi-Fi or with unmetered connection, only when charging, etc.) off by default (i.e. allow sync on all networks)
-  - [ ] Make it per account if multiple accounts are added
+  - [x] Add conditions (only on Wi-Fi or with unmetered connection, only when charging, etc.) off by default (i.e. allow sync on all networks)
+    - [x] Group network, charging and TLS options in a collapsed Advanced menu with short explanations
+  - [x] Make it per account if multiple accounts are added
   - [ ] Advanced: Add a "clear cached data" action
 
 ### About section

@@ -58,7 +58,7 @@
     <string name="polling_6h">6 h</string>
     <string name="polling_1d">1 jour</string>
     <string name="polling_1w">1 semaine</string>
-    <string name="advanced_title">Options avancées</string>
+    <string name="advanced_title">Avancé</string>
     <string name="ignore_tls_title">Ignorer les erreurs TLS</string>
     <string name="ignore_tls_body">Réservé aux environnements de test avec certificat non reconnu.</string>
     <string name="save_action">Enregistrer</string>
@@ -67,6 +67,10 @@
     <string name="dialog_hide_details">Masquer les détails techniques</string>
     <string name="dialog_technical_details">Détails techniques</string>
     <string name="settings_saved">Réglages enregistrés</string>
+    <string name="sync_settings_no_account">Ajoute un compte Oasis pour configurer la synchro en arrière-plan.</string>
+    <string name="sync_unmetered_title">Uniquement sur le Wi-Fi</string>
+    <string name="sync_unmetered_body">Wi-Fi ou autre réseau non facturé.</string>
+    <string name="sync_charging_title">Uniquement pendant la charge</string>
     <string name="error_settings_title">Impossible d\u2019enregistrer les réglages</string>
     <string name="error_settings_message">Les réglages n\u2019ont pas pu être enregistrés localement.</string>
     <string name="settings_configure_before_sync">Configure Oasis dans Réglages avant de synchroniser.</string>
@@ -179,7 +183,7 @@
     <string name="account_updated">Compte mis à jour : %1$s</string>
     <string name="account_removed">Compte supprimé : %1$s</string>
     <string name="account_already_exists">Ce compte est déjà configuré : %1$s</string>
-    <string name="notifications_scope_multi">Ces réglages de notifications s\u2019appliquent à %1$s.</string>
+    <string name="account_settings_scope">S’applique au compte %1$s</string>
     <string name="notifications_test_action">Test</string>
     <string name="notifications_system_settings_action">Ouvrir les réglages système des notifications</string>
     <string name="notifications_system_settings_body">Utilise les réglages système des notifications pour ajuster l’importance, le son, les vibrations et les catégories par compte.</string>
@@ -236,4 +240,5 @@
     <string name="battery_dialog_action">Corriger</string>
     <string name="battery_dialog_dismiss">Plus tard</string>
     <string name="battery_dialog_learn_more">Pourquoi est-ce important ? →</string>
+    <string name="sync_charging_body">Économise la batterie en synchronisant pendant la charge.</string>
 </resources>

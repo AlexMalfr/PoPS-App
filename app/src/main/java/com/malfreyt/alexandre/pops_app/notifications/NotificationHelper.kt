@@ -138,7 +138,7 @@ object NotificationHelper {
         technicalDetails: String,
         onlyAlertOnce: Boolean,
     ) {
-        if (!canNotify(context) || settings.pollingMinutes == 0 || !settings.notificationsEnabled ||
+        if (!canNotify(context) || !account.canSyncInBackground() ||
             !account.isNotificationEnabled(AccountNotificationType.ERROR)) {
             return
         }
