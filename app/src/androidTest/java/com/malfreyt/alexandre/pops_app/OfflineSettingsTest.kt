@@ -119,12 +119,11 @@ class OfflineSettingsTest {
         seedFailureNotification()
         instrumentation.runOnMainSync {
             viewModel.updatePollingMinutes(0)
-            viewModel.saveSettings()
         }
-        awaitOperation { !viewModel.uiState.value.isSaving }
+        instrumentation.waitForIdleSync()
         assertEquals(0, container.gradeRepository.readSettings().selectedAccountOrNull()!!.pollingMinutes)
         assertNull(viewModel.uiState.value.errorDialog)
-        assertTrue(viewModel.uiState.value.draftSettings.editableEquals(viewModel.uiState.value.savedSettings))
+        assertEquals(0, viewModel.uiState.value.savedSettings.selectedAccountOrNull()!!.pollingMinutes)
         assertEquals("Saving preferences must not contact Oasis", 0, requests.get())
         awaitOperation { !hasFailureNotification() }
         assertFalse(container.gradeRepository.readSettings().selectedAccountOrNull()!!.failureNotificationActive)
@@ -133,14 +132,14 @@ class OfflineSettingsTest {
     }
 
     @Test
-    fun serverSettingsCanBeSavedWithoutChangingCredentials() {
+    fun serverSettingsAreSavedAutomaticallyWithoutChangingCredentials() {
         instrumentation.runOnMainSync {
             viewModel.updateOasisUrl("http://127.0.0.1:${server.localPort}/unavailable/")
             viewModel.updateIgnoreTlsErrors(true)
-            viewModel.saveSettings()
         }
-        awaitOperation { !viewModel.uiState.value.isSaving }
-        val saved = container.gradeRepository.readSettings()
+        instrumentation.waitForIdleSync()
+        awaitOperation { container.gradeRepository.readSettings().oasisBaseUrl.endsWith("/unavailable/") }
+        val saved = AppContainer(container.appContext).gradeRepository.readSettings()
         assertTrue(saved.oasisBaseUrl.endsWith("/unavailable/"))
         assertTrue(saved.ignoreTlsErrors)
         assertEquals(account, saved.selectedAccountOrNull())
@@ -194,15 +193,17 @@ class OfflineSettingsTest {
     }
 
     @Test
-    fun savingGeneralSettingsPreservesImmediateNotificationChanges() {
+    fun automaticGeneralSettingsPreserveAccountPreferences() {
         instrumentation.runOnMainSync {
             viewModel.updateNotifyErrors(false)
             viewModel.updateNotifyNewGrades(false)
             viewModel.updatePollingMinutes(60)
-            viewModel.saveSettings()
+            viewModel.updateOasisUrl("http://127.0.0.1:${server.localPort}/autosaved/")
+            viewModel.updateIgnoreTlsErrors(true)
         }
-        awaitOperation { !viewModel.uiState.value.isSaving }
+        awaitOperation { container.gradeRepository.readSettings().oasisBaseUrl.endsWith("/autosaved/") }
         val saved = container.gradeRepository.readSettings()
+        assertTrue(saved.ignoreTlsErrors)
         assertEquals(60, saved.selectedAccountOrNull()!!.pollingMinutes)
         assertFalse(saved.selectedAccountOrNull()!!.notifyErrors)
         assertFalse(saved.selectedAccountOrNull()!!.notifyNewGrades)
@@ -280,6 +281,33 @@ class OfflineSettingsTest {
         assertEquals(previous, container.gradeRepository.readSettings())
         assertTrue(requestPaths.all { it.startsWith("/unavailable/") })
         assertTrue(requests.get() > 0)
+    }
+
+    @Test
+    fun invalidServerInputNeverReplacesSavedServerAndEmptyInputRestoresDefault() {
+        val previousUrl = container.gradeRepository.readSettings().oasisBaseUrl
+        instrumentation.runOnMainSync { viewModel.updateOasisUrl("ftp://invalid") }
+        instrumentation.waitForIdleSync()
+        assertEquals("ftp://invalid", viewModel.uiState.value.oasisUrlInput)
+        assertEquals(previousUrl, AppContainer(container.appContext).gradeRepository.readSettings().oasisBaseUrl)
+        instrumentation.runOnMainSync { viewModel.updateOasisUrl("") }
+        awaitOperation { container.gradeRepository.readSettings().oasisBaseUrl == com.malfreyt.alexandre.pops_app.data.DEFAULT_OASIS_BASE_URL }
+        assertEquals(com.malfreyt.alexandre.pops_app.data.DEFAULT_OASIS_BASE_URL, AppContainer(container.appContext).gradeRepository.readSettings().oasisBaseUrl)
+        assertEquals(0, requests.get())
+    }
+
+    @Test
+    fun serverTypingIsDebouncedAndPersistsTheLastValue() {
+        val base = "http://127.0.0.1:${server.localPort}"
+        instrumentation.runOnMainSync {
+            viewModel.updateOasisUrl("$base/first/")
+            viewModel.updateOasisUrl("$base/final")
+        }
+        assertFalse(container.gradeRepository.readSettings().oasisBaseUrl.endsWith("/first/"))
+        awaitOperation { container.gradeRepository.readSettings().oasisBaseUrl == "$base/final/" }
+        assertEquals("$base/final/", AppContainer(container.appContext).gradeRepository.readSettings().oasisBaseUrl)
+        assertEquals("Typing must not be replaced with the normalized URL", "$base/final", viewModel.uiState.value.oasisUrlInput)
+        assertEquals(0, requests.get())
     }
 
     private fun seedFailureNotification() {

@@ -120,6 +120,8 @@ import com.malfreyt.alexandre.pops_app.R
 import androidx.compose.ui.platform.LocalAutofillManager
 import com.malfreyt.alexandre.pops_app.data.ModuleSummary
 import com.malfreyt.alexandre.pops_app.data.NoteChangeType
+import com.malfreyt.alexandre.pops_app.data.DEFAULT_OASIS_BASE_URL
+import com.malfreyt.alexandre.pops_app.data.normalizeOasisBaseUrl
 import com.malfreyt.alexandre.pops_app.data.OasisAccount
 import com.malfreyt.alexandre.pops_app.data.AccountNotificationType
 import com.malfreyt.alexandre.pops_app.data.currentAcademicYear
@@ -140,7 +142,6 @@ fun MainScreen(viewModel: MainViewModel) {
     val state by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
-    val settingsSaveEnabled = !state.isSaving && !state.draftSettings.editableEquals(state.savedSettings)
     // Per-tab search queries (saved in memory only)
     var searchQueryEpreuves by rememberSaveable { mutableStateOf("") }
     var searchQueryModules by rememberSaveable { mutableStateOf("") }
@@ -196,13 +197,6 @@ fun MainScreen(viewModel: MainViewModel) {
                 MainDestination.SETTINGS -> TopAppBar(
                     title = { Text(stringResource(R.string.settings_title)) },
                     actions = {
-                        IconButton(onClick = viewModel::saveSettings, enabled = settingsSaveEnabled) {
-                            if (state.isSaving) {
-                                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                            } else {
-                                Icon(Icons.Filled.Check, contentDescription = stringResource(R.string.save_action))
-                            }
-                        }
                         OverflowMenu()
                     }
                 )
@@ -1659,7 +1653,7 @@ private fun SyncSettingsCard(
                     icon = {},
                     title = stringResource(R.string.ignore_tls_title),
                     subtitle = stringResource(R.string.ignore_tls_body),
-                    checked = state.draftSettings.ignoreTlsErrors,
+                    checked = state.savedSettings.ignoreTlsErrors,
                     onCheckedChange = viewModel::updateIgnoreTlsErrors,
                 )
             }
@@ -1944,9 +1938,12 @@ private fun ServerUrlSection(state: MainUiState, viewModel: MainViewModel) {
         }
         if (state.serverUrlVisible) {
             OutlinedTextField(
-                value = state.draftSettings.oasisBaseUrl,
+                value = state.oasisUrlInput,
                 onValueChange = viewModel::updateOasisUrl,
-                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text(DEFAULT_OASIS_BASE_URL) },
+                isError = normalizeOasisBaseUrl(state.oasisUrlInput) == null,
+                supportingText = if (normalizeOasisBaseUrl(state.oasisUrlInput) == null) { { Text(stringResource(R.string.error_server_url)) } } else null,
+                modifier = Modifier.fillMaxWidth().testTag("settings_server_url"),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
                 singleLine = true,
             )

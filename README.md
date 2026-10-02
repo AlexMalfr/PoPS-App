@@ -53,9 +53,10 @@ Des modifications locales du code ajoutent `-dirty.<empreinte>` : deux états lo
 3. Renseigne le login et le mot de passe Oasis. L'ajout ou la modification des identifiants teste la connexion avant d'enregistrer le compte.
 4. Choisis la fréquence de vérification et l'état des notifications.
 5. Ouvre `URL du serveur` pour changer l’instance, ou `Synchro > Avancé` pour les conditions réseau/charge et les erreurs TLS.
-6. Appuie sur `Enregistrer` (la coche dans la barre haute) pour sauvegarder les autres réglages.
 
-Le bouton de sauvegarde est désactivé tant qu'il n'y a pas de changement. L'URL et l'option TLS se sauvegardent localement, même si Oasis est inaccessible. Les préférences de synchro et de notifications sont enregistrées immédiatement pour le compte sélectionné. Chaque compte possède sa fréquence et ses conditions (réseau non facturé, charge), désactivées par défaut. Ces conditions concernent uniquement la synchro en arrière-plan : le rafraîchissement manuel reste disponible. Couper les notifications ne coupe pas la synchro. Désactiver les erreurs de synchro, toutes les notifications du compte ou sa synchro en arrière-plan efface l'alerte d'erreur en cours. Seul l'ajout ou la modification des identifiants d'un compte nécessite une connexion réussie à Oasis ; en cas d'échec, les identifiants précédents sont conservés. Lors de la mise à jour, les comptes existants reprennent l'ancienne fréquence globale et les restrictions réseau/charge restent désactivées.
+Tous les réglages sont enregistrés automatiquement. L’URL est enregistrée après une courte pause de saisie ; une URL invalide ne remplace pas le serveur enregistré et un champ vide utilise l’instance par défaut.
+
+Les réglages restent modifiables sans connexion à Oasis. La fréquence de synchro, les conditions réseau/charge et les notifications sont propres au compte sélectionné. Désactiver les erreurs de synchro, toutes les notifications du compte ou sa synchro en arrière-plan efface l’alerte d’erreur en cours. L’ajout ou la modification des identifiants nécessite toujours une authentification réussie. Un refus conserve les identifiants précédents et rappelle qu’un compte non activé ou une fermeture temporaire d’Oasis peut aussi bloquer la connexion.
 
 L'application remonte les années académiques passées jusqu'à rencontrer deux années consécutives sans notes, avec une borne de sécurité de 10 ans.
 
@@ -88,7 +89,7 @@ Invoke-RestMethod http://127.0.0.1:8080/api/scenarios
 2. Ouvre `Réglages` dans l'application.
 3. Déplie `Avancé`.
 4. Mets l'URL Oasis à `http://10.0.2.2:8080/`.
-5. Appuie sur `Enregistrer` pour sauvegarder l'URL.
+5. L’URL est enregistrée automatiquement.
 6. Ajoute un compte avec n'importe quel login et mot de passe non vides.
 7. Reviens sur `Oasis` puis appuie sur l'icône de rafraîchissement.
 
@@ -112,7 +113,7 @@ adb install -r .\app\build\outputs\apk\debug\app-debug.apk
 ```
 
 6. Dans `Réglages > Avancé`, mets l'URL Oasis à `http://<IP_DU_PC>:8080/`.
-7. Appuie sur `Enregistrer` pour sauvegarder l'URL.
+7. L’URL est enregistrée automatiquement.
 8. Ajoute un compte avec un login et un mot de passe non vides.
 9. Reviens sur `Oasis` puis lance un rafraîchissement.
 

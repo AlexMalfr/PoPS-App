@@ -137,6 +137,8 @@
   - [x] Add an "open system notification settings" shortcut and make it clear it's where the user can configure the notification channels and categories in more detail (choose the importance, sound, vibration, etc. for each type of notification)
   - [x] NO notification should be send the very first time the app syncs and fetches the existing grades, because they are not "new" for the user, they are just the current state that we just dumped, so only show notifications for new/updated grades from the second sync and on
 
+- [x] Save all settings automatically, validating and debouncing the server URL without requiring a save button
+
 ### Sync settings section
   - [x] Add options to configure the sync frequency (manual, every 15m, every 30m, every 1h, every 6h, every 12h, every 1d, every 1w)
   - [x] Separate "Background sync" toggle from "Sync frequency" options, because it may not be clear that you have to slide the frequency all the way to "manual" to disable background sync

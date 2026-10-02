@@ -61,12 +61,10 @@
     <string name="advanced_title">Avancé</string>
     <string name="ignore_tls_title">Ignorer les erreurs TLS</string>
     <string name="ignore_tls_body">Réservé aux environnements de test avec certificat non reconnu.</string>
-    <string name="save_action">Enregistrer</string>
     <string name="dialog_close">Compris</string>
     <string name="dialog_show_details">Afficher les détails techniques</string>
     <string name="dialog_hide_details">Masquer les détails techniques</string>
     <string name="dialog_technical_details">Détails techniques</string>
-    <string name="settings_saved">Réglages enregistrés</string>
     <string name="sync_settings_no_account">Ajoute un compte Oasis pour configurer la synchro en arrière-plan.</string>
     <string name="sync_unmetered_title">Uniquement sur le Wi-Fi</string>
     <string name="sync_unmetered_body">Wi-Fi ou autre réseau non facturé.</string>

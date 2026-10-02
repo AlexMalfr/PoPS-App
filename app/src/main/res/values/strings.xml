@@ -61,12 +61,10 @@
     <string name="advanced_title">Advanced</string>
     <string name="ignore_tls_title">Ignore TLS errors</string>
     <string name="ignore_tls_body">Only for test environments with an untrusted certificate.</string>
-    <string name="save_action">Save</string>
     <string name="dialog_close">Close</string>
     <string name="dialog_show_details">Show technical details</string>
     <string name="dialog_hide_details">Hide technical details</string>
     <string name="dialog_technical_details">Technical details</string>
-    <string name="settings_saved">Settings saved</string>
     <string name="sync_settings_no_account">Add an Oasis account to configure background sync.</string>
     <string name="sync_unmetered_title">Only on Wi-Fi</string>
     <string name="sync_unmetered_body">Wi-Fi or another unmetered network.</string>

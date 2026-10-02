@@ -105,24 +105,6 @@ data class AppSettings(
     fun hasAnyBackgroundSyncAccount(): Boolean =
         oasisBaseUrl.isNotBlank() && accounts.any(OasisAccount::canSyncInBackground)
 
-    fun editableEquals(other: AppSettings): Boolean {
-        return oasisBaseUrl == other.oasisBaseUrl &&
-            notificationsEnabled == other.notificationsEnabled &&
-            notifyNewGrades == other.notifyNewGrades &&
-            notifyPendingGrades == other.notifyPendingGrades &&
-            notifyUpdatedGrades == other.notifyUpdatedGrades &&
-            notifyErrors == other.notifyErrors &&
-            pollingMinutes == other.pollingMinutes &&
-            ignoreTlsErrors == other.ignoreTlsErrors
-    }
-
-    fun withRuntimeStateFrom(other: AppSettings): AppSettings {
-        return copy(
-            accounts = other.accounts,
-            selectedAccountId = other.selectedAccountId,
-        )
-    }
-
     fun normalized(): AppSettings {
         val validSelectedAccountId = selectedAccountId?.takeIf { selectedId ->
             accounts.any { it.id == selectedId }

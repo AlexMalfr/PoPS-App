@@ -7,6 +7,8 @@ import com.malfreyt.alexandre.pops_app.R
 import com.malfreyt.alexandre.pops_app.data.AppContainer
 import com.malfreyt.alexandre.pops_app.data.AccountNotificationType
 import com.malfreyt.alexandre.pops_app.data.AppSettings
+import com.malfreyt.alexandre.pops_app.data.DEFAULT_OASIS_BASE_URL
+import com.malfreyt.alexandre.pops_app.data.normalizeOasisBaseUrl
 import com.malfreyt.alexandre.pops_app.data.OasisAccount
 import com.malfreyt.alexandre.pops_app.data.OasisAuthenticationRejectedException
 import com.malfreyt.alexandre.pops_app.data.SemesterSnapshot
@@ -21,6 +23,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 
 enum class MainDestination {
     OASIS,
@@ -51,7 +54,7 @@ data class ErrorDialogState(
 
 data class MainUiState(
     val savedSettings: AppSettings = AppSettings(),
-    val draftSettings: AppSettings = AppSettings(),
+    val oasisUrlInput: String = "",
     val grades: List<UiGrade> = emptyList(),
     val semesterSnapshots: List<SemesterSnapshot> = emptyList(),
     val destination: MainDestination = MainDestination.OASIS,
@@ -60,7 +63,6 @@ data class MainUiState(
     val gradeSortMode: GradeSortMode = GradeSortMode.DATE,
     val gradeSortAscending: Boolean = false,
     val isSyncing: Boolean = false,
-    val isSaving: Boolean = false,
     val isSavingAccount: Boolean = false,
     val serverUrlVisible: Boolean = false,
     val advancedSettingsVisible: Boolean = false,
@@ -77,11 +79,12 @@ class MainViewModel(
     private var allGrades: List<UiGrade> = emptyList()
     private var allSemesterSnapshots: List<SemesterSnapshot> = emptyList()
     private var activeSyncJob: Job? = null
+    private var serverUrlSaveJob: Job? = null
 
     private val _uiState = MutableStateFlow(
         MainUiState(
             savedSettings = repository.readSettings(),
-            draftSettings = repository.readSettings(),
+            oasisUrlInput = repository.readSettings().oasisBaseUrl.takeUnless { it == DEFAULT_OASIS_BASE_URL }.orEmpty(),
         )
     )
     val uiState: StateFlow<MainUiState> = _uiState.asStateFlow()
@@ -90,12 +93,12 @@ class MainViewModel(
         viewModelScope.launch {
             repository.observeSettings().collect { settings ->
                 _uiState.update { current ->
-                    val shouldReplaceDraft = current.draftSettings.editableEquals(current.savedSettings)
-                    val nextDraft = if (shouldReplaceDraft) settings else current.draftSettings.withRuntimeStateFrom(settings)
+                    val urlChangedExternally = current.savedSettings.oasisBaseUrl != settings.oasisBaseUrl &&
+                        normalizeOasisBaseUrl(current.oasisUrlInput) != settings.oasisBaseUrl && serverUrlSaveJob?.isActive != true
                     applyVisibleAccountData(
                         current.copy(
                             savedSettings = settings,
-                            draftSettings = nextDraft,
+                            oasisUrlInput = if (urlChangedExternally) settings.oasisBaseUrl.takeUnless { it == DEFAULT_OASIS_BASE_URL }.orEmpty() else current.oasisUrlInput,
                         ),
                         settings,
                     )
@@ -155,8 +158,17 @@ class MainViewModel(
         _uiState.update { it.copy(advancedSettingsVisible = !it.advancedSettingsVisible) }
     }
 
-    fun updateOasisUrl(value: String) = updateDraftSettings { copy(oasisBaseUrl = value) }
-    fun updateIgnoreTlsErrors(value: Boolean) = updateDraftSettings { copy(ignoreTlsErrors = value) }
+    fun updateOasisUrl(value: String) {
+        serverUrlSaveJob?.cancel()
+        _uiState.update { it.copy(oasisUrlInput = value) }
+        val normalized = normalizeOasisBaseUrl(value) ?: return
+        serverUrlSaveJob = viewModelScope.launch {
+            // Wait for typing to settle; malformed input never replaces the saved URL.
+            delay(500)
+            persistGeneralSettings { copy(oasisBaseUrl = normalized) }
+        }
+    }
+    fun updateIgnoreTlsErrors(value: Boolean) = persistGeneralSettings { copy(ignoreTlsErrors = value) }
     fun updatePollingMinutes(value: Int) = updateSelectedAccountSync { copy(pollingMinutes = value) }
     fun updateSyncUnmeteredOnly(value: Boolean) = updateSelectedAccountSync { copy(syncUnmeteredOnly = value) }
     fun updateSyncChargingOnly(value: Boolean) = updateSelectedAccountSync { copy(syncChargingOnly = value) }
@@ -240,39 +252,18 @@ class MainViewModel(
         enqueueSnackbar(message)
     }
 
-    fun saveSettings() {
-        val current = _uiState.value
-        val candidate = current.draftSettings.withRuntimeStateFrom(current.savedSettings)
-        if (candidate.editableEquals(current.savedSettings)) {
-            return
-        }
-
-        viewModelScope.launch {
-            _uiState.update { it.copy(isSaving = true, errorDialog = null) }
-            try {
-                // Credentials are validated by saveAccount; preferences must remain editable offline.
-                repository.saveSettings(candidate.withRuntimeStateFrom(repository.readSettings()))
-                applyNotificationSettings()
-                SyncScheduler.reschedule(appContainer.appContext, repository.readSettings())
-                enqueueSnackbar(context.getString(R.string.settings_saved))
-                _uiState.update {
-                    it.copy(
-                        isSaving = false,
-                        destination = MainDestination.OASIS,
-                    )
-                }
-            } catch (error: Exception) {
-                _uiState.update {
-                    it.copy(
-                        isSaving = false,
-                        errorDialog = ErrorDialogState(
-                            title = context.getString(R.string.error_settings_title),
-                            message = error.message ?: context.getString(R.string.error_settings_message),
-                            technicalDetails = error.toTechnicalDetails(),
-                            warning = if (error is OasisAuthenticationRejectedException) context.getString(R.string.error_oasis_auth_warning) else null,
-                        ),
-                    )
-                }
+    private fun persistGeneralSettings(transform: AppSettings.() -> AppSettings) {
+        try {
+            repository.saveSettings(repository.readSettings().transform())
+            applyNotificationSettings()
+            SyncScheduler.reschedule(appContainer.appContext, repository.readSettings())
+        } catch (error: Exception) {
+            _uiState.update {
+                it.copy(errorDialog = ErrorDialogState(
+                    title = context.getString(R.string.error_settings_title),
+                    message = error.message ?: context.getString(R.string.error_settings_message),
+                    technicalDetails = error.toTechnicalDetails(),
+                ))
             }
         }
     }
@@ -343,12 +334,6 @@ class MainViewModel(
 
     fun consumeSnackbar() {
         _uiState.update { it.copy(snackbarMessage = null) }
-    }
-
-    private fun updateDraftSettings(transform: AppSettings.() -> AppSettings) {
-        _uiState.update { state ->
-            state.copy(draftSettings = state.draftSettings.transform())
-        }
     }
 
     private fun enqueueSnackbar(message: String) {
