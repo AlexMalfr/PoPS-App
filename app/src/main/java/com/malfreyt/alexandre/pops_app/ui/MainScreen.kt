@@ -108,6 +108,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -1266,18 +1267,19 @@ private fun buildDetailItems(vararg items: String?): List<String> {
 // ──────────────────────────────────────────────────
 
 @Composable
-private fun SettingsPage(
+internal fun SettingsPage(
     state: MainUiState,
     viewModel: MainViewModel,
 ) {
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize().testTag("settings_list"),
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         item { AccountSettingsCard(state = state, viewModel = viewModel) }
-        item { SyncSettingsCard(state = state, viewModel = viewModel) }
-        item { NotificationSettingsCard(state = state, viewModel = viewModel) }
+        // Each account owns its controls' remembered animation and gesture state.
+        item(key = "sync-${state.savedSettings.selectedAccountOrNull()?.id}") { SyncSettingsCard(state = state, viewModel = viewModel) }
+        item(key = "notifications-${state.savedSettings.selectedAccountOrNull()?.id}") { NotificationSettingsCard(state = state, viewModel = viewModel) }
         item { AboutCard() }
     }
 }
@@ -1568,7 +1570,7 @@ private fun AccountEditorDialog(
         },
         dismissButton = {
             TextButton(onClick = dismiss, enabled = !isSaving) {
-                Text(stringResource(R.string.dialog_close))
+                Text(stringResource(R.string.dialog_cancel))
             }
         },
         title = {
@@ -1708,6 +1710,7 @@ private fun NotificationSettingsCard(
                     subtitle = null,
                     checked = account.notificationsEnabled,
                     onCheckedChange = viewModel::updateNotificationsEnabled,
+                    switchModifier = Modifier.testTag("notifications_master_switch"),
                 )
                 if (account.notificationsEnabled) {
                     NotificationToggleWithTest(
@@ -1958,6 +1961,7 @@ private fun SettingToggleRow(
     subtitle: String?,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
+    switchModifier: Modifier = Modifier,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -1971,7 +1975,7 @@ private fun SettingToggleRow(
                 Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
         }
-        Switch(checked = checked, onCheckedChange = onCheckedChange)
+        Switch(checked = checked, onCheckedChange = onCheckedChange, modifier = switchModifier)
     }
 }
 

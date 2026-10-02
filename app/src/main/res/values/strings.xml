@@ -242,4 +242,5 @@
     <string name="sync_charging_body">Saves battery by syncing while charging.</string>
     <string name="onboarding_server_action">Change server</string>
     <string name="error_server_url">Enter a valid HTTP(S) server URL without credentials, query or fragment.</string>
+    <string name="dialog_cancel">Cancel</string>
 </resources>

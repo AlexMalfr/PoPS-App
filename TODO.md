@@ -113,6 +113,8 @@
     - [x] You should not be allowed to add the same account two times
     - [x] fix: the profile picture needs authentication to be fetched
   - [x] Instead of just having "login" and "password" fields always showing in the settings, have a more user-friendly "Add an account" flow
+    - [x] Fix notification switch thumb state when changing accounts
+    - [x] Use Cancel to dismiss the add/edit account dialog
     - [x] Add an "edit account" action for selected account
     - [x] Add a "remove account / log out" action for selected account
       - [x] fix: the red "log out" btn is way too long vertically for some reason
