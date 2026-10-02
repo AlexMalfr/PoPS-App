@@ -418,6 +418,9 @@ internal fun OnboardingDataPage(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.error,
                 )
+                error.warning?.let {
+                    Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
             Spacer(modifier = Modifier.height(8.dp))
             Text(

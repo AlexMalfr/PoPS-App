@@ -41,6 +41,7 @@ class OfflineSettingsTest {
     private lateinit var serverThread: Thread
     private val requests = AtomicInteger()
     @Volatile private var acceptsCredentials = false
+    @Volatile private var rejectsCredentials = false
     private val requestPaths = java.util.concurrent.ConcurrentLinkedQueue<String>()
     private val channelId = "grades_errors_${account.id}"
     private val notificationId = 10_000 + ((account.id.hashCode() and 0x7fffffff) % 100_000)
@@ -64,8 +65,12 @@ class OfflineSettingsTest {
                         socket.soTimeout = 2000
                         val requestLine = socket.getInputStream().bufferedReader().readLine().orEmpty()
                         requestPaths.add(requestLine.split(" ").getOrElse(1) { "" })
-                        val body = if (acceptsCredentials) "{\"success\":true}" else ""
-                        val status = if (acceptsCredentials) "200 OK" else "503 Service Unavailable"
+                        val body = when {
+                            acceptsCredentials -> "{\"success\":true}"
+                            rejectsCredentials -> "{\"success\":false,\"text\":\"Vos identifiants sont incorrects\"}"
+                            else -> ""
+                        }
+                        val status = if (acceptsCredentials || rejectsCredentials) "200 OK" else "503 Service Unavailable"
                         socket.getOutputStream().write(
                             "HTTP/1.1 $status\r\nContent-Type: application/json\r\nContent-Length: ${body.toByteArray().size}\r\nConnection: close\r\n\r\n$body".toByteArray()
                         )
@@ -149,9 +154,21 @@ class OfflineSettingsTest {
         instrumentation.runOnMainSync { viewModel.saveAccount(account.id, "changed-login", "changed-password") { authenticated = true } }
         awaitOperation { !viewModel.uiState.value.isSavingAccount }
         assertNotNull(viewModel.uiState.value.errorDialog)
+        assertNull("Network errors must not be described as rejected credentials", viewModel.uiState.value.errorDialog!!.warning)
         assertEquals(account, container.gradeRepository.readSettings().selectedAccountOrNull())
         assertFalse("Failed credentials must not be offered for saving", authenticated)
         assertTrue("Changing credentials must contact Oasis", requests.get() > 0)
+    }
+
+    @Test
+    fun rejectedCredentialsExplainAccountActivationOrTemporaryClosure() {
+        rejectsCredentials = true
+        instrumentation.runOnMainSync { viewModel.saveAccount(account.id, "changed", "changed") }
+        awaitOperation { !viewModel.uiState.value.isSavingAccount }
+        val error = viewModel.uiState.value.errorDialog!!
+        assertEquals("Vos identifiants sont incorrects", error.message)
+        assertEquals(appContext.getString(R.string.error_oasis_auth_warning), error.warning)
+        assertEquals(account, container.gradeRepository.readSettings().selectedAccountOrNull())
     }
 
     @Test

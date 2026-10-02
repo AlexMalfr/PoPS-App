@@ -8,6 +8,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.malfreyt.alexandre.pops_app.data.DEFAULT_OASIS_BASE_URL
 import com.malfreyt.alexandre.pops_app.ui.MainUiState
+import com.malfreyt.alexandre.pops_app.ui.ErrorDialogState
 import com.malfreyt.alexandre.pops_app.ui.OnboardingDataPage
 import org.junit.Rule
 import org.junit.Test
@@ -16,6 +17,17 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class OnboardingServerTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
+    @Test fun rejectedLoginWarningAppearsBelowTheServerMessage() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val message = "Vos identifiants sont incorrects"
+        val warning = context.getString(R.string.error_oasis_auth_warning)
+        compose.setContent {
+            OnboardingDataPage(MainUiState(errorDialog = ErrorDialogState("", message, "", warning)), "", "", {}, {}, "", {}, {})
+        }
+        val messageBounds = compose.onNodeWithText(message).fetchSemanticsNode().boundsInRoot
+        val warningBounds = compose.onNodeWithText(warning).fetchSemanticsNode().boundsInRoot
+        org.junit.Assert.assertTrue(warningBounds.top >= messageBounds.bottom)
+    }
     @Test fun serverFieldStartsCollapsedAndEmptyValueUsesDefault() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val server = mutableStateOf("")

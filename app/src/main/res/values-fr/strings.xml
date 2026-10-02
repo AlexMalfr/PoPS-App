@@ -244,4 +244,5 @@
     <string name="onboarding_server_action">Changer de serveur</string>
     <string name="error_server_url">Saisis une URL HTTP(S) valide, sans identifiants, paramètres ni fragment.</string>
     <string name="dialog_cancel">Annuler</string>
+    <string name="error_oasis_auth_warning">Le compte n’est peut-être pas encore activé, ou l’accès à Oasis est temporairement fermé.</string>
 </resources>

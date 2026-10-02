@@ -8,6 +8,7 @@ import com.malfreyt.alexandre.pops_app.data.AppContainer
 import com.malfreyt.alexandre.pops_app.data.AccountNotificationType
 import com.malfreyt.alexandre.pops_app.data.AppSettings
 import com.malfreyt.alexandre.pops_app.data.OasisAccount
+import com.malfreyt.alexandre.pops_app.data.OasisAuthenticationRejectedException
 import com.malfreyt.alexandre.pops_app.data.SemesterSnapshot
 import com.malfreyt.alexandre.pops_app.data.UiGrade
 import com.malfreyt.alexandre.pops_app.data.currentAcademicYear
@@ -45,6 +46,7 @@ data class ErrorDialogState(
     val title: String,
     val message: String,
     val technicalDetails: String,
+    val warning: String? = null,
 )
 
 data class MainUiState(
@@ -215,6 +217,7 @@ class MainViewModel(
                             title = context.getString(R.string.error_connection_title),
                             message = error.message ?: context.getString(R.string.error_connection_message),
                             technicalDetails = error.toTechnicalDetails(),
+                            warning = if (error is OasisAuthenticationRejectedException) context.getString(R.string.error_oasis_auth_warning) else null,
                         ),
                     )
                 }
@@ -266,6 +269,7 @@ class MainViewModel(
                             title = context.getString(R.string.error_settings_title),
                             message = error.message ?: context.getString(R.string.error_settings_message),
                             technicalDetails = error.toTechnicalDetails(),
+                            warning = if (error is OasisAuthenticationRejectedException) context.getString(R.string.error_oasis_auth_warning) else null,
                         ),
                     )
                 }
@@ -318,6 +322,7 @@ class MainViewModel(
                             title = context.getString(R.string.error_sync_title),
                             message = error.message ?: context.getString(R.string.error_sync_message),
                             technicalDetails = error.toTechnicalDetails(),
+                            warning = if (error is OasisAuthenticationRejectedException) context.getString(R.string.error_oasis_auth_warning) else null,
                         ),
                     )
                 }

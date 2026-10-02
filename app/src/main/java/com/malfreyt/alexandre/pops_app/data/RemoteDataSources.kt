@@ -139,7 +139,7 @@ class OasisRemoteDataSource(
                 }
                 val json = JSONObject(body)
                 if (!json.optBoolean("success")) {
-                    throw IllegalStateException(json.optString("text", context.getString(R.string.error_oasis_auth_denied)))
+                    throw OasisAuthenticationRejectedException(json.optString("text", context.getString(R.string.error_oasis_auth_denied)))
                 }
                 Log.d(TAG, "Oasis authentication succeeded")
             } }
